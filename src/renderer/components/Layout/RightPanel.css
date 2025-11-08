@@ -1,0 +1,47 @@
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.properties-area {
+  background: #1e1e1e;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 150px;
+}
+
+.resource-browser-area {
+  background: #1e1e1e;
+  overflow: hidden;
+  min-height: 150px;
+}
+
+.panel-resize-handle.horizontal {
+  height: 4px;
+  width: 100%;
+  background: #3d3d3d;
+  cursor: ns-resize;
+  position: relative;
+  z-index: 10;
+}
+
+.panel-resize-handle.horizontal:hover {
+  background: #007acc;
+}
+
+.panel-resize-handle.vertical {
+  width: 4px;
+  height: 100%;
+  background: #3d3d3d;
+  cursor: ew-resize;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 10;
+}
+
+.panel-resize-handle.vertical:hover {
+  background: #007acc;
+}

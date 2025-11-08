@@ -1,0 +1,96 @@
+.properties-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+}
+
+.properties-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border-bottom: 1px solid #3d3d3d;
+}
+
+.properties-header::before {
+  content: "Properties";
+  margin: 0;
+  font-size: 14px;
+  color: #d4a574;
+  font-weight: 600;
+}
+
+.properties-empty {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.properties-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.properties-section {
+  padding: 15px 0;
+  border-bottom: 1px solid #3d3d3d;
+}
+
+.properties-section:last-child {
+  border-bottom: none;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #aaa;
+  margin-bottom: 15px;
+  padding: 0 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 0 15px;
+}
+
+.property-group label {
+  font-size: 12px;
+  color: #999;
+}
+
+.property-group input,
+.property-group select,
+.property-group textarea {
+  width: 100%;
+}
+
+.property-group input[type="checkbox"] {
+  width: auto;
+}
+
+.property-row {
+  display: flex;
+  gap: 10px;
+}
+
+.property-row .property-group {
+  flex: 1;
+}
+
+.multi-select-notice {
+  background: #3d4a5f;
+  border: 1px solid #4a5a70;
+  border-radius: 4px;
+  padding: 10px 15px;
+  margin: 10px 15px;
+  font-size: 12px;
+  color: #c8d8e8;
+  text-align: center;
+}

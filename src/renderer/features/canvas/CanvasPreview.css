@@ -1,0 +1,16 @@
+.canvas-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-canvas {
+  border: 1px solid #3d3d3d;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  display: block;
+}

@@ -1,0 +1,422 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #252525;
+  user-select: none;
+}
+
+.timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-placeholder {
+  color: #666;
+  font-size: 14px;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #3d3d3d;
+  gap: 15px;
+}
+
+.timeline-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.timeline-duration {
+  font-size: 12px;
+  color: #999;
+}
+
+.timeline-ruler {
+  height: 40px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #3d3d3d;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.ruler-markers {
+  display: flex;
+  position: relative;
+  height: 100%;
+  margin-left: 150px;
+}
+
+.ruler-marker {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ruler-tick {
+  width: 1px;
+  background: #555;
+}
+
+.major-tick {
+  height: 12px;
+  background: #777;
+}
+
+.minor-tick {
+  height: 6px;
+  background: #444;
+}
+
+.ruler-label {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.playhead-line {
+  width: 2px;
+  height: 100%;
+  background: #e74c3c;
+  position: relative;
+  left: -1px;
+}
+
+.playhead-handle {
+  width: 12px;
+  height: 12px;
+  background: #e74c3c;
+  border-radius: 50%;
+  position: absolute;
+  top: -6px;
+  left: -7px;
+}
+
+.timeline-tracks {
+  flex: 1;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+}
+
+.timeline-tracks-table {
+  border-collapse: collapse;
+  table-layout: auto;
+  width: 100%;
+}
+
+.timeline-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  gap: 15px;
+  color: #666;
+}
+
+.timeline-track {
+  border-bottom: 1px solid #3d3d3d;
+  min-height: 60px;
+}
+
+.track-header {
+  width: 150px;
+  background: #2d2d2d;
+  padding: 10px;
+  border-right: 1px solid #3d3d3d;
+  text-align: left;
+  vertical-align: top;
+  cursor: grab;
+  transition: background 0.15s;
+}
+
+.track-header:active {
+  cursor: grabbing;
+}
+
+.track-header.drag-over {
+  background: #3d3d3d;
+  border-top: 2px solid #5a9fd4;
+}
+
+.track-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-content {
+  background: #1e1e1e;
+  cursor: default;
+  position: relative;
+  padding: 0;
+}
+
+/* ========================================
+   TIMELINE CLIPS - Professional Styling
+   ======================================== */
+
+/* Base clip styling */
+.scene-clip,
+.image-clip,
+.audio-clip,
+.effect-clip {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 4px;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.15s, transform 0.15s;
+  pointer-events: none;
+}
+
+/* Allow pointer events on clip content for dragging */
+.scene-clip .clip-content,
+.image-clip .clip-content,
+.audio-clip .clip-content,
+.effect-clip .clip-content,
+.scene-clip .clip-resize-handle,
+.image-clip .clip-resize-handle,
+.audio-clip .clip-resize-handle,
+.effect-clip .clip-resize-handle {
+  pointer-events: auto;
+}
+
+/* Scene clips */
+.scene-clip {
+  background: linear-gradient(to bottom, rgba(14, 99, 156, 0.4), rgba(14, 99, 156, 0.25));
+  border: 1px solid #0e639c;
+  border-top: 2px solid #1a7fbf;
+}
+
+.scene-clip:hover {
+  box-shadow: 0 0 8px rgba(14, 99, 156, 0.6);
+  border-color: #1a7fbf;
+}
+
+/* Image clips */
+.image-clip {
+  background: linear-gradient(to bottom, rgba(180, 140, 80, 0.4), rgba(180, 140, 80, 0.25));
+  border: 1px solid #8b6f47;
+  border-top: 2px solid #b48c50;
+}
+
+.image-clip:hover {
+  box-shadow: 0 0 8px rgba(180, 140, 80, 0.6);
+  border-color: #b48c50;
+}
+
+/* Audio clips */
+.audio-clip {
+  background: linear-gradient(to bottom, rgba(45, 140, 60, 0.4), rgba(45, 140, 60, 0.25));
+  border: 1px solid #2d8c3c;
+  border-top: 2px solid #3da74e;
+}
+
+.audio-clip:hover {
+  box-shadow: 0 0 8px rgba(45, 140, 60, 0.6);
+  border-color: #3da74e;
+}
+
+/* Effect clips */
+.effect-clip {
+  background: linear-gradient(to bottom, rgba(212, 165, 116, 0.4), rgba(212, 165, 116, 0.25));
+  border: 1px solid #d4a574;
+  border-top: 2px solid #e4b584;
+}
+
+.effect-clip:hover {
+  box-shadow: 0 0 8px rgba(212, 165, 116, 0.6);
+  border-color: #e4b584;
+}
+
+/* Dragging and resizing states */
+.scene-clip.dragging,
+.image-clip.dragging,
+.audio-clip.dragging,
+.effect-clip.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+}
+
+.scene-clip.resizing,
+.image-clip.resizing,
+.audio-clip.resizing,
+.effect-clip.resizing {
+  opacity: 0.8;
+}
+
+/* Clip header with name */
+.clip-header {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: auto;
+  flex-shrink: 0;
+  cursor: move;
+}
+
+.clip-name {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.3px;
+}
+
+/* Clip content area */
+.clip-content {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 5px 10px;
+  position: relative;
+  pointer-events: auto;
+}
+
+.clip-label {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Resize handles */
+.clip-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.clip-resize-handle.left {
+  left: 0;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.clip-resize-handle.right {
+  right: 0;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.scene-clip:hover .clip-resize-handle,
+.image-clip:hover .clip-resize-handle,
+.audio-clip:hover .clip-resize-handle,
+.effect-clip:hover .clip-resize-handle {
+  opacity: 1;
+}
+
+.clip-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Scene internal layers */
+.scene-internal-layer .track-header {
+  background: #282828;
+  border-left: 3px solid #0e639c;
+}
+
+.scene-internal-layer .track-content {
+  background: #1a1a1a;
+}
+
+/* Context Menu */
+.context-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+.context-menu {
+  background: #2d2d2d;
+  border: 1px solid #3d3d3d;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  min-width: 180px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.context-menu-item {
+  padding: 8px 16px;
+  color: #ccc;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.context-menu-item:hover {
+  background: #d4a574;
+  color: #1e1e1e;
+}
+
+/* Drag and Drop visual feedback */
+.track-content {
+  position: relative;
+}
+
+.track-content::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px dashed transparent;
+  pointer-events: none;
+  transition: border-color 0.15s;
+}
+
+.track-content[data-drag-over="true"]::after {
+  border-color: #d4a574;
+  background: rgba(212, 165, 116, 0.05);
+}
+
+/* Ghost clip preview - global overlay that follows cursor */
+.ghost-clip-global {
+  opacity: 0.7;
+  pointer-events: none;
+  border-style: dashed !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.ghost-clip-global .clip-content {
+  pointer-events: none;
+}

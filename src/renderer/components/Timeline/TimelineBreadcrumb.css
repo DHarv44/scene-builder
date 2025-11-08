@@ -1,0 +1,38 @@
+.timeline-breadcrumb {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #3d3d3d;
+  font-size: 13px;
+  gap: 4px;
+}
+
+.breadcrumb-item {
+  background: none;
+  border: none;
+  color: #007acc;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+
+.breadcrumb-item:hover:not(:disabled) {
+  background: #3d3d3d;
+  color: #4daafc;
+}
+
+.breadcrumb-item:disabled,
+.breadcrumb-item.active {
+  color: #cccccc;
+  cursor: default;
+}
+
+.breadcrumb-separator {
+  color: #666;
+  margin: 0 4px;
+  user-select: none;
+}
