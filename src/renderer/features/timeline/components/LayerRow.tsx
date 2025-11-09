@@ -14,6 +14,12 @@ interface LayerRowProps {
   dragOverLayerId: string | null;
   scenePackage: any;
   scenePath: string | null;
+  isMuted?: boolean;
+  isSoloed?: boolean;
+  isLocked?: boolean;
+  onToggleMute?: (layerId: string) => void;
+  onToggleSolo?: (layerId: string) => void;
+  onToggleLock?: (layerId: string) => void;
   onSelectLayer?: (layerId: string | null) => void;
   onSelectItem?: (itemId: string | null) => void;
   setContextMenu: (menu: ContextMenuState | null) => void;
@@ -38,6 +44,12 @@ const LayerRow: React.FC<LayerRowProps> = ({
   draggedItemSourceLayer,
   draggedItemTargetLayer,
   dragOverLayerId,
+  isMuted,
+  isSoloed,
+  isLocked,
+  onToggleMute,
+  onToggleSolo,
+  onToggleLock,
   onSelectLayer,
   onSelectItem,
   setContextMenu,
@@ -71,7 +83,41 @@ const LayerRow: React.FC<LayerRowProps> = ({
           setContextMenu({ type: 'layer-header', targetId: layer.id, x: e.clientX, y: e.clientY });
         }}
       >
-        <span className="track-name">{layer.name}</span>
+        <div className="track-header-content">
+          <span className="track-name">{layer.name}</span>
+          <div className="track-controls">
+            <button
+              className={`track-btn track-mute-btn ${isMuted ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleMute?.(layer.id);
+              }}
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              M
+            </button>
+            <button
+              className={`track-btn track-solo-btn ${isSoloed ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSolo?.(layer.id);
+              }}
+              title={isSoloed ? 'Unsolo' : 'Solo'}
+            >
+              S
+            </button>
+            <button
+              className={`track-btn track-lock-btn ${isLocked ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleLock?.(layer.id);
+              }}
+              title={isLocked ? 'Unlock' : 'Lock'}
+            >
+              🔒
+            </button>
+          </div>
+        </div>
       </th>
       <td
         className="track-content"

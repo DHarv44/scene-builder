@@ -11,6 +11,7 @@ import { PlaybackProvider } from './context/PlaybackContext';
 import { LayoutProvider } from './context/LayoutContext';
 import { TimelineNavigationProvider } from './context/TimelineNavigationContext';
 import { ViewModeProvider } from './context/ViewModeContext';
+import { UndoRedoProvider } from './context/UndoRedoContext';
 
 /**
  * Inner app component that uses HistoryContext
@@ -25,15 +26,17 @@ const AppContent: React.FC<{ scenePath: string | null }> = ({ scenePath }) => {
       scenePath={scenePath}
       onUpdate={(pkg) => updateScene(pkg)}
     >
-      <SelectionProvider>
-        <PlaybackProvider scenePackage={scenePackage}>
-          <LayoutProvider>
-            <TimelineNavigationProvider>
-              <MainLayout />
-            </TimelineNavigationProvider>
-          </LayoutProvider>
-        </PlaybackProvider>
-      </SelectionProvider>
+      <UndoRedoProvider>
+        <SelectionProvider>
+          <PlaybackProvider scenePackage={scenePackage}>
+            <LayoutProvider>
+              <TimelineNavigationProvider>
+                <MainLayout />
+              </TimelineNavigationProvider>
+            </LayoutProvider>
+          </PlaybackProvider>
+        </SelectionProvider>
+      </UndoRedoProvider>
     </SceneProvider>
   );
 };

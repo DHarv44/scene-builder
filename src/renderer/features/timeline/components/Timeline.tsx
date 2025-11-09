@@ -67,6 +67,11 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
   onUpdate
 }, ref) => {
   const [zoom, setZoom] = useState(1.0);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [mutedLayers, setMutedLayers] = useState<Set<string>>(new Set());
+  const [soloedLayers, setSoloedLayers] = useState<Set<string>>(new Set());
+  const [lockedLayers, setLockedLayers] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [collapsedScenes, setCollapsedScenes] = useState<Set<string>>(new Set());
   const [assetPickerDialog, setAssetPickerDialog] = useState<{
@@ -85,6 +90,30 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
       }
       return next;
     });
+  };
+
+  // Handle multi-selection
+  const handleItemSelection = (itemId: string, event: React.MouseEvent) => {
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      // Multi-select: toggle item in selection
+      setSelectedItems(prev => {
+        const next = new Set(prev);
+        if (next.has(itemId)) {
+          next.delete(itemId);
+        } else {
+          next.add(itemId);
+        }
+        return next;
+      });
+    } else {
+      // Single select: clear others and select this item
+      setSelectedItems(new Set([itemId]));
+    }
+
+    // Also call the parent's onSelectItem
+    if (onSelectItem) {
+      onSelectItem(itemId);
+    }
   };
 
   // Drag state for repositioning items
@@ -119,6 +148,43 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
       }
     }
   }));
+
+  // Track control toggle handlers
+  const handleToggleMute = (layerId: string) => {
+    setMutedLayers(prev => {
+      const next = new Set(prev);
+      if (next.has(layerId)) {
+        next.delete(layerId);
+      } else {
+        next.add(layerId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSolo = (layerId: string) => {
+    setSoloedLayers(prev => {
+      const next = new Set(prev);
+      if (next.has(layerId)) {
+        next.delete(layerId);
+      } else {
+        next.add(layerId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleLock = (layerId: string) => {
+    setLockedLayers(prev => {
+      const next = new Set(prev);
+      if (next.has(layerId)) {
+        next.delete(layerId);
+      } else {
+        next.add(layerId);
+      }
+      return next;
+    });
+  };
 
   // Get timeline layers (filtered by focused scene if applicable)
   const timelineLayers = useMemo(() => {
@@ -572,6 +638,39 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
       <div className="timeline-header">
         <div className="timeline-title">Timeline</div>
         <div className="timeline-duration">Duration: {formatTime(duration)}</div>
+        <div className="timeline-controls">
+          <button
+            className={`timeline-snap-btn ${snapEnabled ? 'active' : ''}`}
+            onClick={() => setSnapEnabled(!snapEnabled)}
+            title={`Snap to Grid ${snapEnabled ? '(On)' : '(Off)'} - Toggle with 'S' key`}
+          >
+            <span className="snap-icon">⚡</span>
+            Snap
+          </button>
+          <div className="timeline-zoom-separator" />
+          <button
+            className="timeline-zoom-btn"
+            onClick={() => setZoom(Math.max(0.1, zoom - 0.25))}
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <span className="timeline-zoom-display">{Math.round(zoom * 100)}%</span>
+          <button
+            className="timeline-zoom-btn"
+            onClick={() => setZoom(Math.min(5, zoom + 0.25))}
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            className="timeline-zoom-btn timeline-zoom-fit"
+            onClick={() => setZoom(1)}
+            title="Zoom to Fit"
+          >
+            Fit
+          </button>
+        </div>
       </div>
 
       {/* Ruler */}
@@ -583,7 +682,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
         {/* Playhead */}
         <div
           className="playhead"
-          style={{ left: `${150 + currentTime * pixelsPerMs}px` }}
+          style={{ left: `${200 + currentTime * pixelsPerMs}px` }}
         >
           <div className="playhead-line">
             <div className="playhead-handle" />
@@ -661,7 +760,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
             </div>
           </div>
         ) : (
-          <table className="timeline-tracks-table" style={{ minWidth: `${150 + duration * pixelsPerMs}px` }}>
+          <table className="timeline-tracks-table" style={{ minWidth: `${200 + duration * pixelsPerMs}px` }}>
             <tbody>
           {timelineLayers.map((layer) => {
             const rows: JSX.Element[] = [];
@@ -738,6 +837,12 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
                 dragOverLayerId={dragOverLayerId}
                 scenePackage={scenePackage}
                 scenePath={scenePath}
+                isMuted={mutedLayers.has(layer.id)}
+                isSoloed={soloedLayers.has(layer.id)}
+                isLocked={lockedLayers.has(layer.id)}
+                onToggleMute={handleToggleMute}
+                onToggleSolo={handleToggleSolo}
+                onToggleLock={handleToggleLock}
                 onSelectLayer={onSelectLayer}
                 onSelectItem={onSelectItem}
                 setContextMenu={setContextMenu}

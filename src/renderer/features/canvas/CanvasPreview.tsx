@@ -8,7 +8,9 @@ import { useScenePackage } from '../../context/SceneContext';
 import { useSelection } from '../../context/SelectionContext';
 import { usePlayback } from '../../context/PlaybackContext';
 import { useLayout } from '../../context/LayoutContext';
+import { useUndoRedo } from '../../context/UndoRedoContext';
 import * as CanvasActions from './Canvas.actions';
+import { UpdateLayersCommand } from './Canvas.commands';
 import './CanvasPreview.css';
 
 type DragMode = 'none' | 'move' | 'resize' | 'rotate' | 'marquee';
@@ -19,6 +21,7 @@ const CanvasPreview: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) 
   const { selectedLayerIds, selectLayers, clearLayerSelection, selectedSceneId } = useSelection();
   const { currentTime, isPlaying } = usePlayback();
   const { previewMode, zoom, setZoom } = useLayout();
+  const { execute: executeCommand } = useUndoRedo();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,6 +61,9 @@ const CanvasPreview: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) 
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // Clipboard state
+  const [clipboard, setClipboard] = useState<Layer[] | null>(null);
 
   // Get all visible layers at currentTime from timeline
   const layers = React.useMemo(() => {
@@ -180,26 +186,106 @@ const CanvasPreview: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) 
     }
   }, [currentTime, isPlaying, player]);
 
+  // Copy/Paste/Duplicate handlers
+  const handleCopy = () => {
+    const selectedLayers = layers.filter(l => selectedLayerIds.includes(l.id));
+    setClipboard(JSON.parse(JSON.stringify(selectedLayers))); // Deep clone
+  };
+
+  const handlePaste = () => {
+    if (!clipboard || clipboard.length === 0) return;
+
+    // Create new layers with new IDs and offset positions
+    const newLayers = clipboard.map(layer => ({
+      ...layer,
+      id: `${layer.asset}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      position: {
+        x: typeof layer.position?.x === 'number' ? layer.position.x + 20 : layer.position?.x || '50%',
+        y: typeof layer.position?.y === 'number' ? layer.position.y + 20 : layer.position?.y || '50%'
+      }
+    }));
+
+    const command = new UpdateLayersCommand(
+      selectedSceneId,
+      [],
+      [...layers, ...newLayers],
+      updateScene,
+      saveScene,
+      `Paste ${newLayers.length} layer${newLayers.length > 1 ? 's' : ''}`
+    );
+    executeCommand(command);
+
+    // Select the new layers
+    selectLayers(newLayers.map(l => l.id));
+  };
+
+  const handleDuplicate = () => {
+    const selectedLayers = layers.filter(l => selectedLayerIds.includes(l.id));
+    if (selectedLayers.length === 0) return;
+
+    const duplicatedLayers = selectedLayers.map(layer => ({
+      ...layer,
+      id: `${layer.asset}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      position: {
+        x: typeof layer.position?.x === 'number' ? layer.position.x + 20 : layer.position?.x || '50%',
+        y: typeof layer.position?.y === 'number' ? layer.position.y + 20 : layer.position?.y || '50%'
+      }
+    }));
+
+    const command = new UpdateLayersCommand(
+      selectedSceneId,
+      [],
+      [...layers, ...duplicatedLayers],
+      updateScene,
+      saveScene,
+      `Duplicate ${duplicatedLayers.length} layer${duplicatedLayers.length > 1 ? 's' : ''}`
+    );
+    executeCommand(command);
+
+    // Select the duplicated layers
+    selectLayers(duplicatedLayers.map(l => l.id));
+  };
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (previewMode === 'preview') return;
 
+      // Select All
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
         const allLayerIds = layers.map(layer => layer.id);
         selectLayers(allLayerIds);
       }
 
+      // Deselect All
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault();
         selectLayers([]);
+      }
+
+      // Copy
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedLayerIds.length > 0) {
+        e.preventDefault();
+        handleCopy();
+      }
+
+      // Paste
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard && clipboard.length > 0) {
+        e.preventDefault();
+        handlePaste();
+      }
+
+      // Duplicate
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedLayerIds.length > 0 && e.shiftKey) {
+        e.preventDefault();
+        handleDuplicate();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [layers, selectLayers, previewMode]);
+  }, [layers, selectLayers, previewMode, selectedLayerIds, clipboard]);
 
   // Wheel event for zoom
   useEffect(() => {
@@ -429,6 +515,34 @@ const CanvasPreview: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) 
         }
 
         updated.scale = Math.max(0.1, newScale);
+      } else if (dragMode === 'rotate' && dragHandle) {
+        const bounds = editor.getLayerBounds(initialLayerState);
+        if (!bounds) return layer;
+
+        // Calculate center point of the layer
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + bounds.height / 2;
+
+        // Calculate angle from center to initial drag point
+        const initialAngle = Math.atan2(dragStart.y - centerY, dragStart.x - centerX);
+
+        // Calculate angle from center to current mouse position
+        const currentAngle = Math.atan2(coords.y - centerY, coords.x - centerX);
+
+        // Calculate rotation delta in degrees
+        const rotationDelta = ((currentAngle - initialAngle) * 180) / Math.PI;
+
+        // Apply rotation (add to initial rotation)
+        const initialRotation = initialLayerState.rotation || 0;
+        updated.rotation = initialRotation + rotationDelta;
+
+        // Snap to 15-degree increments if Shift is held
+        if (e.shiftKey) {
+          updated.rotation = Math.round(updated.rotation / 15) * 15;
+        }
+
+        // Normalize to 0-360 range
+        updated.rotation = ((updated.rotation % 360) + 360) % 360;
       }
 
       return updated;
@@ -457,7 +571,27 @@ const CanvasPreview: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) 
     }
 
     if (tempLayers && (dragMode === 'move' || dragMode === 'resize' || dragMode === 'rotate')) {
-      CanvasActions.updateCanvasLayers(selectedSceneId, tempLayers, updateScene, saveScene);
+      // Get original layer states before update
+      const oldLayers = layers.filter(layer =>
+        tempLayers.some(tl => tl.id === layer.id)
+      );
+
+      // Determine description based on drag mode
+      let description = 'Move layer';
+      if (dragMode === 'resize') description = 'Resize layer';
+      if (dragMode === 'rotate') description = 'Rotate layer';
+      if (tempLayers.length > 1) description += 's';
+
+      // Create and execute undo command
+      const command = new UpdateLayersCommand(
+        selectedSceneId,
+        oldLayers,
+        tempLayers,
+        updateScene,
+        saveScene,
+        description
+      );
+      executeCommand(command);
     }
 
     setDragMode('none');
@@ -478,11 +612,12 @@ const CanvasPreview: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) 
 
   const getContextMenuItems = (): ContextMenuItem[] => {
     const hasSelection = selectedLayerIds.length > 0;
+    const hasClipboard = clipboard && clipboard.length > 0;
 
     return [
-      { label: 'Copy', onClick: () => alert('Copy not implemented yet'), disabled: !hasSelection },
-      { label: 'Paste', onClick: () => alert('Paste not implemented yet'), disabled: true },
-      { label: 'Duplicate', onClick: () => alert('Duplicate not implemented yet'), disabled: !hasSelection },
+      { label: 'Copy', onClick: handleCopy, disabled: !hasSelection },
+      { label: 'Paste', onClick: handlePaste, disabled: !hasClipboard },
+      { label: 'Duplicate', onClick: handleDuplicate, disabled: !hasSelection },
       { label: '', onClick: () => {}, separator: true },
       {
         label: 'Delete',

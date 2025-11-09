@@ -224,14 +224,16 @@ export class CanvasEditor {
       const posX = parsePosition(layer.position?.x, this.canvasWidth);
       const posY = parsePosition(layer.position?.y, this.canvasHeight);
       const scale = layer.scale || 1;
+      const rotation = layer.rotation || 0;
 
-      let drawX = posX;
-      let drawY = posY;
       const width = img.width * scale;
       const height = img.height * scale;
 
-      // Adjust for anchor point
+      // Calculate draw position based on anchor
+      let drawX = posX;
+      let drawY = posY;
       const anchor = layer.anchor || 'top-left';
+
       switch (anchor) {
         case 'center':
           drawX -= width / 2;
@@ -260,7 +262,19 @@ export class CanvasEditor {
           break;
       }
 
-      ctx.drawImage(img, drawX, drawY, width, height);
+      // Apply rotation if present
+      if (rotation !== 0) {
+        // Translate to position, rotate around center, then draw
+        const centerX = drawX + width / 2;
+        const centerY = drawY + height / 2;
+
+        ctx.translate(centerX, centerY);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.drawImage(img, -width / 2, -height / 2, width, height);
+      } else {
+        ctx.drawImage(img, drawX, drawY, width, height);
+      }
+
       ctx.restore();
     });
   }

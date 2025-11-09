@@ -4,14 +4,26 @@ import type {
   TimelineScene
 } from '../../../types/scenePackage';
 
-export const formatTime = (ms: number): string => {
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  const remainingMs = Math.floor((ms % 1000) / 100);
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds
+/**
+ * Format time in professional timecode format: HH:MM:SS:FF
+ * @param ms - Time in milliseconds
+ * @param fps - Frames per second (default: 30)
+ * @returns Formatted timecode string
+ */
+export const formatTime = (ms: number, fps: number = 30): string => {
+  const totalSeconds = ms / 1000;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  const frames = Math.floor((ms % 1000) * fps / 1000);
+
+  return `${hours.toString().padStart(2, '0')}:${minutes
     .toString()
-    .padStart(2, '0')}.${remainingMs}`;
+    .padStart(2, '0')}:${seconds
+    .toString()
+    .padStart(2, '0')}:${frames
+    .toString()
+    .padStart(2, '0')}`;
 };
 
 export const findParentScene = (
@@ -131,4 +143,73 @@ export const findContextMenuTarget = (
   }
 
   return null;
+};
+
+/**
+ * Snap a time value to the nearest snap point
+ * @param time - The original time in milliseconds
+ * @param snapEnabled - Whether snapping is enabled
+ * @param snapTargets - Array of snap target times (clip edges, playhead, markers)
+ * @param snapTolerance - Tolerance in milliseconds (default: 100ms or ~3 frames at 30fps)
+ * @returns Snapped time value
+ */
+export const snapToGrid = (
+  time: number,
+  snapEnabled: boolean,
+  snapTargets: number[] = [],
+  snapTolerance: number = 100
+): number => {
+  if (!snapEnabled || snapTargets.length === 0) {
+    return time;
+  }
+
+  // Find the closest snap target within tolerance
+  let closestTarget = time;
+  let minDistance = snapTolerance;
+
+  for (const target of snapTargets) {
+    const distance = Math.abs(time - target);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestTarget = target;
+    }
+  }
+
+  return closestTarget;
+};
+
+/**
+ * Collect all snap targets in the timeline
+ * @param layers - Timeline layers
+ * @param currentTime - Current playhead position
+ * @param excludeItemId - Item ID to exclude (the item being dragged)
+ * @returns Array of snap target times
+ */
+export const collectSnapTargets = (
+  layers: TimelineLayer[],
+  currentTime: number,
+  excludeItemId?: string
+): number[] => {
+  const targets: number[] = [0, currentTime]; // Always include timeline start and playhead
+
+  const collectFromLayers = (layerList: TimelineLayer[]) => {
+    for (const layer of layerList) {
+      for (const item of layer.items) {
+        if (item.id === excludeItemId) continue;
+
+        // Add item start and end times
+        targets.push(item.startTime);
+        targets.push(item.startTime + item.duration);
+
+        // If it's a scene, collect from child layers
+        if (item.type === 'scene' && item.layers) {
+          collectFromLayers(item.layers);
+        }
+      }
+    }
+  };
+
+  collectFromLayers(layers);
+
+  return targets;
 };
