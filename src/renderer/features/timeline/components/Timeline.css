@@ -1,9 +1,51 @@
+/* ========================================
+   TIMELINE CONTAINER - Professional NLE Dark Theme
+   ======================================== */
+
+:root {
+  /* Professional Color Palette */
+  --timeline-bg-dark: #1a1a1a;
+  --timeline-bg-medium: #252525;
+  --timeline-bg-light: #2d2d2d;
+  --timeline-border: #3d3d3d;
+  --timeline-border-subtle: #2d2d2d;
+
+  /* Scene Colors */
+  --scene-color-primary: #5a9fd4;
+  --scene-color-bright: #7ab9e4;
+  --scene-color-dark: #4a8fc4;
+  --scene-gradient-start: #5a9fd4;
+  --scene-gradient-end: #4a8fc4;
+
+  /* Track Colors */
+  --layer-text: #999;
+  --layer-text-dim: #666;
+  --camera-color: #9333ea;
+  --camera-color-bright: #a855f7;
+  --effects-color: #fb923c;
+  --effects-color-bright: #fb923c;
+
+  /* UI Accents */
+  --highlight-gold: #d4a574;
+  --text-primary: #fff;
+  --text-secondary: #ccc;
+  --text-muted: #888;
+
+  /* Track Dimensions */
+  --scene-track-height: 50px;
+  --scene-layer-height: 40px;
+  --camera-track-height: 45px;
+  --effects-track-height: 45px;
+  --track-header-width: 200px;
+}
+
 .timeline {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #252525;
+  background: var(--timeline-bg-medium);
   user-select: none;
+  overflow: hidden;
 }
 
 .timeline-empty {
@@ -13,84 +55,95 @@
 }
 
 .timeline-placeholder {
-  color: #666;
+  color: var(--layer-text);
   font-size: 14px;
 }
+
+/* ========================================
+   TIMELINE HEADER
+   ======================================== */
 
 .timeline-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  background: #2d2d2d;
-  border-bottom: 1px solid #3d3d3d;
+  padding: 12px 16px;
+  background: var(--timeline-bg-light);
+  border-bottom: 2px solid var(--timeline-border);
   gap: 15px;
+  flex-shrink: 0;
 }
 
 .timeline-title {
   font-size: 14px;
   font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.3px;
 }
 
 .timeline-duration {
   font-size: 12px;
-  color: #999;
+  color: var(--layer-text);
   flex: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .timeline-zoom-btn {
-  background: #3d3d3d;
+  background: var(--timeline-border);
   border: 1px solid #555;
-  color: #ccc;
-  padding: 4px 10px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
   font-size: 14px;
   font-weight: 600;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.15s;
-  min-width: 28px;
+  transition: all 0.2s ease;
+  min-width: 32px;
 }
 
 .timeline-zoom-btn:hover {
   background: #4d4d4d;
   border-color: #666;
-  color: #fff;
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .timeline-zoom-btn:active {
-  background: #2d2d2d;
-  transform: scale(0.95);
+  background: var(--timeline-bg-light);
+  transform: translateY(0);
 }
 
 .timeline-zoom-fit {
-  padding: 4px 12px;
+  padding: 6px 14px;
   min-width: auto;
 }
 
 .timeline-zoom-display {
   font-size: 12px;
   color: #aaa;
-  min-width: 45px;
+  min-width: 50px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .timeline-snap-btn {
-  background: #3d3d3d;
+  background: var(--timeline-border);
   border: 1px solid #555;
-  color: #888;
-  padding: 4px 12px;
+  color: var(--text-muted);
+  padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -108,9 +161,10 @@
 }
 
 .timeline-snap-btn.active {
-  background: #d4a574;
+  background: var(--highlight-gold);
   border-color: #e4b584;
   color: #1e1e1e;
+  box-shadow: 0 0 12px rgba(212, 165, 116, 0.4);
 }
 
 .timeline-snap-btn.active .snap-icon {
@@ -118,30 +172,35 @@
 }
 
 .timeline-snap-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 .timeline-zoom-separator {
   width: 1px;
-  height: 20px;
+  height: 24px;
   background: #555;
   margin: 0 4px;
 }
 
+/* ========================================
+   TIMELINE RULER
+   ======================================== */
+
 .timeline-ruler {
   height: 40px;
   background: #1e1e1e;
-  border-bottom: 1px solid #3d3d3d;
+  border-bottom: 2px solid var(--timeline-border);
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .ruler-markers {
   display: flex;
   position: relative;
   height: 100%;
-  margin-left: 200px;
+  margin-left: var(--track-header-width);
 }
 
 .ruler-marker {
@@ -157,27 +216,33 @@
 }
 
 .major-tick {
-  height: 12px;
-  background: #777;
+  height: 14px;
+  background: #888;
 }
 
 .minor-tick {
-  height: 6px;
+  height: 7px;
   background: #444;
 }
 
 .ruler-label {
   font-size: 11px;
-  color: #888;
-  margin-top: 2px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
+
+/* ========================================
+   PLAYHEAD
+   ======================================== */
 
 .playhead {
   position: absolute;
   top: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 10;
+  z-index: 100;
 }
 
 .playhead-line {
@@ -186,27 +251,32 @@
   background: #ff4444;
   position: relative;
   left: -1.5px;
-  box-shadow: 0 0 6px rgba(255, 68, 68, 0.8), 0 0 12px rgba(255, 68, 68, 0.4);
-  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.9), 0 0 16px rgba(255, 68, 68, 0.5);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.8));
 }
 
 .playhead-handle {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   background: #ff4444;
-  border: 2px solid #ffffff;
+  border: 3px solid #ffffff;
   border-radius: 50%;
   position: absolute;
-  top: -8px;
-  left: -9.5px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 8px rgba(255, 68, 68, 0.6);
+  top: -9px;
+  left: -10.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(255, 68, 68, 0.7);
 }
+
+/* ========================================
+   TIMELINE TRACKS CONTAINER
+   ======================================== */
 
 .timeline-tracks {
   flex: 1;
   overflow: auto;
   width: 100%;
   height: 100%;
+  background: var(--timeline-bg-dark);
 }
 
 .timeline-tracks-table {
@@ -222,23 +292,31 @@
   justify-content: center;
   height: 200px;
   gap: 15px;
-  color: #666;
+  color: var(--layer-text);
+  background: var(--timeline-bg-dark);
 }
 
+/* ========================================
+   TRACK BASE STYLES
+   ======================================== */
+
 .timeline-track {
-  border-bottom: 1px solid #3d3d3d;
-  min-height: 60px;
+  border-bottom: 1px solid var(--timeline-border-subtle);
 }
 
 .track-header {
-  width: 200px;
-  background: #2d2d2d;
-  padding: 8px;
-  border-right: 1px solid #3d3d3d;
+  width: var(--track-header-width);
+  background: var(--timeline-bg-light);
+  padding: 10px 12px;
+  border-right: 2px solid var(--timeline-border);
   text-align: left;
-  vertical-align: top;
-  cursor: grab;
-  transition: background 0.15s;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.track-header:hover {
+  background: #333;
 }
 
 .track-header:active {
@@ -246,14 +324,14 @@
 }
 
 .track-header.drag-over {
-  background: #3d3d3d;
-  border-top: 2px solid #5a9fd4;
+  background: var(--timeline-border);
+  border-top: 3px solid var(--scene-color-primary);
 }
 
 .track-header-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .track-name {
@@ -262,7 +340,438 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-secondary);
 }
+
+.track-content {
+  background: var(--timeline-bg-dark);
+  cursor: default;
+  position: relative;
+  padding: 0;
+}
+
+/* ========================================
+   SCENE TRACK - HEADER ONLY (NO CONTENT BAR)
+   ======================================== */
+
+.scene-track {
+  border-bottom: 1px solid var(--timeline-border) !important;
+}
+
+.scene-header {
+  background: #2a2a2a !important;
+  border-bottom: none !important;
+  padding: 10px 14px !important;
+}
+
+.scene-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scene-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-header-duration {
+  font-size: 11px;
+  color: var(--layer-text-dim);
+  margin-left: 32px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.scene-track-name {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--scene-color-primary) !important;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.scene-icon {
+  font-size: 18px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.scene-collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  border-radius: 3px;
+}
+
+.scene-collapse-btn:hover {
+  color: var(--scene-color-primary);
+  background: rgba(90, 159, 212, 0.1);
+}
+
+.scene-track-content {
+  background: var(--timeline-bg-dark) !important;
+  height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden;
+}
+
+/* ========================================
+   SCENE LAYER ROWS - INDENTED CHILDREN
+   ======================================== */
+
+.scene-layer-row {
+  min-height: var(--scene-layer-height) !important;
+  border-bottom: 1px solid var(--timeline-border-subtle) !important;
+}
+
+.scene-layer-header {
+  background: #242424 !important;
+  border-right: 2px solid var(--timeline-border) !important;
+  border-left: 3px solid rgba(90, 159, 212, 0.4) !important;
+  padding: 8px 12px !important;
+  padding-left: 28px !important;
+}
+
+.scene-layer-header:hover {
+  background: #2a2a2a !important;
+}
+
+.scene-layer-header-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-layer-tree-line {
+  color: var(--layer-text-dim);
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.scene-layer-name {
+  font-size: 12px !important;
+  color: #aaa !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.2px;
+}
+
+.scene-layer-content {
+  background: #1c1c1c !important;
+  min-height: var(--scene-layer-height);
+  border-left: 3px solid rgba(90, 159, 212, 0.15) !important;
+}
+
+/* ========================================
+   CAMERA TRACK - PROFESSIONAL STYLING
+   ======================================== */
+
+.camera-track {
+  border-top: 3px solid var(--timeline-border) !important;
+  min-height: var(--camera-track-height) !important;
+}
+
+.camera-header,
+.track-header.camera-header {
+  background: #242424 !important;
+  border-left: 4px solid var(--camera-color) !important;
+  padding: 10px 12px !important;
+}
+
+.camera-header:hover {
+  background: #2a2a2a !important;
+}
+
+.camera-header .track-name {
+  color: var(--camera-color-bright) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+.camera-track-content,
+.track-content.camera-track-content {
+  background: rgba(147, 51, 234, 0.03) !important;
+  border-bottom: 1px solid rgba(147, 51, 234, 0.1);
+}
+
+.camera-item {
+  background: linear-gradient(to bottom,
+    rgba(147, 51, 234, 0.7),
+    rgba(147, 51, 234, 0.5)) !important;
+  border: 2px solid var(--camera-color) !important;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.3) !important;
+  transition: all 0.2s ease;
+}
+
+.camera-item:hover {
+  border-color: var(--camera-color-bright) !important;
+  box-shadow: 0 3px 12px rgba(147, 51, 234, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   EFFECTS TRACK - PROFESSIONAL STYLING
+   ======================================== */
+
+.effects-track {
+  border-top: 3px solid var(--timeline-border) !important;
+  min-height: var(--effects-track-height) !important;
+}
+
+.effects-header,
+.track-header.effects-header {
+  background: #242424 !important;
+  border-left: 4px solid var(--effects-color) !important;
+  padding: 10px 12px !important;
+}
+
+.effects-header:hover {
+  background: #2a2a2a !important;
+}
+
+.effects-header .track-name {
+  color: var(--effects-color-bright) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+.effects-track-content,
+.track-content.effects-track-content {
+  background: rgba(251, 146, 60, 0.03) !important;
+  border-bottom: 1px solid rgba(251, 146, 60, 0.1);
+}
+
+.effect-item {
+  background: linear-gradient(to bottom,
+    rgba(251, 146, 60, 0.7),
+    rgba(251, 146, 60, 0.5)) !important;
+  border: 2px solid var(--effects-color) !important;
+  box-shadow: 0 2px 8px rgba(251, 146, 60, 0.3) !important;
+  transition: all 0.2s ease;
+}
+
+.effect-item:hover {
+  border-color: #fda560 !important;
+  box-shadow: 0 3px 12px rgba(251, 146, 60, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   TIMELINE CLIPS - REFINED STYLING
+   ======================================== */
+
+.scene-clip,
+.image-clip,
+.audio-clip,
+.effect-clip {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 4px;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  pointer-events: none;
+}
+
+/* Selected state for clips */
+.scene-clip.selected,
+.image-clip.selected,
+.audio-clip.selected,
+.effect-clip.selected {
+  border: 2px solid var(--scene-color-bright) !important;
+  box-shadow:
+    0 0 16px rgba(90, 159, 212, 0.7),
+    0 0 32px rgba(90, 159, 212, 0.4) !important;
+  z-index: 10;
+  transform: translateY(-1px);
+}
+
+/* Allow pointer events on clip content */
+.scene-clip .clip-content,
+.image-clip .clip-content,
+.audio-clip .clip-content,
+.effect-clip .clip-content,
+.scene-clip .clip-resize-handle,
+.image-clip .clip-resize-handle,
+.audio-clip .clip-resize-handle,
+.effect-clip .clip-resize-handle {
+  pointer-events: auto;
+}
+
+/* Scene clips */
+.scene-clip {
+  background: linear-gradient(to bottom,
+    rgba(14, 99, 156, 0.45),
+    rgba(14, 99, 156, 0.3));
+  border: 2px solid #0e639c;
+  box-shadow: 0 2px 6px rgba(14, 99, 156, 0.3);
+}
+
+.scene-clip:hover {
+  box-shadow: 0 3px 10px rgba(14, 99, 156, 0.5);
+  border-color: #1a7fbf;
+  transform: translateY(-1px);
+}
+
+/* Image clips */
+.image-clip {
+  background: linear-gradient(to bottom,
+    rgba(180, 140, 80, 0.45),
+    rgba(180, 140, 80, 0.3));
+  border: 2px solid #8b6f47;
+  box-shadow: 0 2px 6px rgba(180, 140, 80, 0.3);
+}
+
+.image-clip:hover {
+  box-shadow: 0 3px 10px rgba(180, 140, 80, 0.5);
+  border-color: #b48c50;
+  transform: translateY(-1px);
+}
+
+/* Audio clips */
+.audio-clip {
+  background: linear-gradient(to bottom,
+    rgba(45, 140, 60, 0.45),
+    rgba(45, 140, 60, 0.3));
+  border: 2px solid #2d8c3c;
+  box-shadow: 0 2px 6px rgba(45, 140, 60, 0.3);
+}
+
+.audio-clip:hover {
+  box-shadow: 0 3px 10px rgba(45, 140, 60, 0.5);
+  border-color: #3da74e;
+  transform: translateY(-1px);
+}
+
+/* Effect clips */
+.effect-clip {
+  background: linear-gradient(to bottom,
+    rgba(212, 165, 116, 0.45),
+    rgba(212, 165, 116, 0.3));
+  border: 2px solid #d4a574;
+  box-shadow: 0 2px 6px rgba(212, 165, 116, 0.3);
+}
+
+.effect-clip:hover {
+  box-shadow: 0 3px 10px rgba(212, 165, 116, 0.5);
+  border-color: #e4b584;
+  transform: translateY(-1px);
+}
+
+/* Dragging and resizing states */
+.scene-clip.dragging,
+.image-clip.dragging,
+.audio-clip.dragging,
+.effect-clip.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.scene-clip.resizing,
+.image-clip.resizing,
+.audio-clip.resizing,
+.effect-clip.resizing {
+  opacity: 0.85;
+}
+
+/* Clip header with name */
+.clip-header {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: auto;
+  flex-shrink: 0;
+  cursor: move;
+}
+
+.clip-name {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.3px;
+}
+
+/* Clip content area */
+.clip-content {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 6px 10px;
+  position: relative;
+  pointer-events: auto;
+}
+
+.clip-label {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Resize handles */
+.clip-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.clip-resize-handle.left {
+  left: 0;
+  background: linear-gradient(to right,
+    rgba(255, 255, 255, 0.4),
+    transparent);
+}
+
+.clip-resize-handle.right {
+  right: 0;
+  background: linear-gradient(to left,
+    rgba(255, 255, 255, 0.4),
+    transparent);
+}
+
+.scene-clip:hover .clip-resize-handle,
+.image-clip:hover .clip-resize-handle,
+.audio-clip:hover .clip-resize-handle,
+.effect-clip:hover .clip-resize-handle {
+  opacity: 1;
+}
+
+.clip-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ========================================
+   TRACK CONTROLS
+   ======================================== */
 
 .track-controls {
   display: flex;
@@ -272,19 +781,19 @@
 
 .track-btn {
   background: #1e1e1e;
-  border: 1px solid #3d3d3d;
-  color: #888;
-  padding: 2px 6px;
+  border: 1px solid var(--timeline-border);
+  color: var(--text-muted);
+  padding: 3px 7px;
   font-size: 10px;
   font-weight: 600;
   border-radius: 3px;
   cursor: pointer;
-  transition: all 0.15s;
-  min-width: 20px;
+  transition: all 0.2s ease;
+  min-width: 22px;
 }
 
 .track-btn:hover {
-  background: #2d2d2d;
+  background: var(--timeline-bg-light);
   border-color: #555;
   color: #aaa;
 }
@@ -307,227 +816,41 @@
   color: #fff;
 }
 
-.track-content {
-  background: #1e1e1e;
-  cursor: default;
-  position: relative;
-  padding: 0;
+/* ========================================
+   DRAG AND DROP VISUAL FEEDBACK
+   ======================================== */
+
+.track-content::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px dashed transparent;
+  pointer-events: none;
+  transition: border-color 0.2s ease;
+  border-radius: 4px;
+}
+
+.track-content[data-drag-over="true"]::after {
+  border-color: var(--highlight-gold);
+  background: rgba(212, 165, 116, 0.08);
+}
+
+/* Ghost clip preview */
+.ghost-clip-global {
+  opacity: 0.6;
+  pointer-events: none;
+  border-style: dashed !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ghost-clip-global .clip-content {
+  pointer-events: none;
 }
 
 /* ========================================
-   TIMELINE CLIPS - Professional Styling
+   CONTEXT MENU
    ======================================== */
 
-/* Base clip styling */
-.scene-clip,
-.image-clip,
-.audio-clip,
-.effect-clip {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  border-radius: 4px;
-  cursor: move;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
-  pointer-events: none;
-}
-
-/* Selected state for clips */
-.scene-clip.selected,
-.image-clip.selected,
-.audio-clip.selected,
-.effect-clip.selected {
-  border: 2px solid #5a9fd4 !important;
-  box-shadow: 0 0 12px rgba(90, 159, 212, 0.6), 0 0 24px rgba(90, 159, 212, 0.3) !important;
-  z-index: 5;
-}
-
-/* Allow pointer events on clip content for dragging */
-.scene-clip .clip-content,
-.image-clip .clip-content,
-.audio-clip .clip-content,
-.effect-clip .clip-content,
-.scene-clip .clip-resize-handle,
-.image-clip .clip-resize-handle,
-.audio-clip .clip-resize-handle,
-.effect-clip .clip-resize-handle {
-  pointer-events: auto;
-}
-
-/* Scene clips */
-.scene-clip {
-  background: linear-gradient(to bottom, rgba(14, 99, 156, 0.4), rgba(14, 99, 156, 0.25));
-  border: 1px solid #0e639c;
-  border-top: 2px solid #1a7fbf;
-}
-
-.scene-clip:hover {
-  box-shadow: 0 0 8px rgba(14, 99, 156, 0.6);
-  border-color: #1a7fbf;
-}
-
-/* Image clips */
-.image-clip {
-  background: linear-gradient(to bottom, rgba(180, 140, 80, 0.4), rgba(180, 140, 80, 0.25));
-  border: 1px solid #8b6f47;
-  border-top: 2px solid #b48c50;
-}
-
-.image-clip:hover {
-  box-shadow: 0 0 8px rgba(180, 140, 80, 0.6);
-  border-color: #b48c50;
-}
-
-/* Audio clips */
-.audio-clip {
-  background: linear-gradient(to bottom, rgba(45, 140, 60, 0.4), rgba(45, 140, 60, 0.25));
-  border: 1px solid #2d8c3c;
-  border-top: 2px solid #3da74e;
-}
-
-.audio-clip:hover {
-  box-shadow: 0 0 8px rgba(45, 140, 60, 0.6);
-  border-color: #3da74e;
-}
-
-/* Effect clips */
-.effect-clip {
-  background: linear-gradient(to bottom, rgba(212, 165, 116, 0.4), rgba(212, 165, 116, 0.25));
-  border: 1px solid #d4a574;
-  border-top: 2px solid #e4b584;
-}
-
-.effect-clip:hover {
-  box-shadow: 0 0 8px rgba(212, 165, 116, 0.6);
-  border-color: #e4b584;
-}
-
-/* Dragging and resizing states */
-.scene-clip.dragging,
-.image-clip.dragging,
-.audio-clip.dragging,
-.effect-clip.dragging {
-  opacity: 0.7;
-  cursor: grabbing;
-}
-
-.scene-clip.resizing,
-.image-clip.resizing,
-.audio-clip.resizing,
-.effect-clip.resizing {
-  opacity: 0.8;
-}
-
-/* Clip header with name */
-.clip-header {
-  height: 24px;
-  display: flex;
-  align-items: center;
-  padding: 0 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  pointer-events: auto;
-  flex-shrink: 0;
-  cursor: move;
-}
-
-.clip-name {
-  font-size: 12px;
-  color: #fff;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  letter-spacing: 0.3px;
-}
-
-/* Clip content area */
-.clip-content {
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 5px 10px;
-  position: relative;
-  pointer-events: auto;
-}
-
-.clip-label {
-  font-size: 12px;
-  color: #fff;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* Resize handles */
-.clip-resize-handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  cursor: ew-resize;
-  z-index: 3;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
-}
-
-.clip-resize-handle.left {
-  left: 0;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0.3), transparent);
-}
-
-.clip-resize-handle.right {
-  right: 0;
-  background: linear-gradient(to left, rgba(255, 255, 255, 0.3), transparent);
-}
-
-.scene-clip:hover .clip-resize-handle,
-.image-clip:hover .clip-resize-handle,
-.audio-clip:hover .clip-resize-handle,
-.effect-clip:hover .clip-resize-handle {
-  opacity: 1;
-}
-
-.clip-resize-handle:hover {
-  background: rgba(255, 255, 255, 0.5) !important;
-}
-
-/* Scene layer rows */
-.scene-layer-row {
-  border-bottom: 1px solid #3d3d3d;
-}
-
-.scene-layer-header {
-  background: #282828;
-  border-left: 3px solid #0e639c;
-  padding-left: 20px;
-}
-
-.scene-layer-name {
-  color: #9db4c7;
-  font-size: 12px;
-}
-
-.scene-layer-content {
-  background: #1a1a1a;
-  border-left: 3px solid rgba(14, 99, 156, 0.3);
-}
-
-/* Scene bounds visual indicator */
-.scene-bounds-container {
-  pointer-events: none;
-}
-
-/* Context Menu */
 .context-menu-backdrop {
   position: fixed;
   top: 0;
@@ -538,55 +861,55 @@
 }
 
 .context-menu {
-  background: #2d2d2d;
-  border: 1px solid #3d3d3d;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  min-width: 180px;
+  background: var(--timeline-bg-light);
+  border: 1px solid var(--timeline-border);
+  border-radius: 6px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  min-width: 200px;
   z-index: 1000;
   overflow: hidden;
 }
 
 .context-menu-item {
-  padding: 8px 16px;
-  color: #ccc;
+  padding: 10px 18px;
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s ease;
+  font-weight: 500;
 }
 
 .context-menu-item:hover {
-  background: #d4a574;
+  background: var(--highlight-gold);
   color: #1e1e1e;
 }
 
-/* Drag and Drop visual feedback */
-.track-content {
-  position: relative;
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+.timeline-tracks::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
 }
 
-.track-content::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 2px dashed transparent;
-  pointer-events: none;
-  transition: border-color 0.15s;
+.timeline-tracks::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-left: 1px solid #2d2d2d;
 }
 
-.track-content[data-drag-over="true"]::after {
-  border-color: #d4a574;
-  background: rgba(212, 165, 116, 0.05);
+.timeline-tracks::-webkit-scrollbar-thumb {
+  background: #3d3d3d;
+  border-radius: 7px;
+  border: 3px solid #1a1a1a;
 }
 
-/* Ghost clip preview - global overlay that follows cursor */
-.ghost-clip-global {
-  opacity: 0.7;
-  pointer-events: none;
-  border-style: dashed !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+.timeline-tracks::-webkit-scrollbar-thumb:hover {
+  background: #4d4d4d;
 }
 
-.ghost-clip-global .clip-content {
-  pointer-events: none;
+.timeline-tracks::-webkit-scrollbar-corner {
+  background: #1a1a1a;
 }

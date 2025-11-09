@@ -2,7 +2,11 @@ import type {
   ScenePackage,
   TimelineLayer,
   TimelineItem,
-  TimelineImage
+  TimelineImage,
+  TimelineScene,
+  SceneLayer,
+  SceneItem,
+  ImageItem
 } from '../../../types/scenePackage';
 import type { ResizeHandle } from '../types';
 import { findParentScene, findParentSceneForItem } from '../utils/Timeline.utils';
@@ -88,40 +92,40 @@ export const handleMouseMove = (
     const deltaTime = deltaX / pixelsPerMs;
     let newStartTime = Math.max(0, dragStartTime + deltaTime);
 
-    // Find parent scene and clamp within its duration
-    const parentScene = findParentSceneForItem(scenePackage.timeline.layers || [], draggedItemId);
-    if (parentScene) {
-      // Get item to find its duration
-      let itemDuration = 0;
-      const findItem = (layers: TimelineLayer[]): TimelineItem | null => {
-        for (const layer of layers) {
-          const found = layer.items.find(i => i.id === draggedItemId);
-          if (found) return found;
-          for (const item of layer.items) {
-            if (item.type === 'scene' && item.layers) {
-              const nested = findItem(item.layers);
-              if (nested) return nested;
-            }
-          }
+    // Check if this is a camera item
+    if (scenePackage.timeline.camera?.items) {
+      const cameraItem = scenePackage.timeline.camera.items.find(item => item.id === draggedItemId);
+      if (cameraItem && onUpdate) {
+        const updated = JSON.parse(JSON.stringify(scenePackage));
+        const item = updated.timeline.camera.items.find((i: any) => i.id === draggedItemId);
+        if (item) {
+          item.startTime = newStartTime;
+          onUpdate(updated);
+          return;
         }
-        return null;
-      };
-      const item = findItem(scenePackage.timeline.layers || []);
-      if (item) {
-        itemDuration = item.duration;
-        // Clamp so item doesn't exceed scene duration
-        const maxStartTime = parentScene.duration - itemDuration;
-        newStartTime = Math.min(newStartTime, maxStartTime);
       }
     }
 
+    // Check if this is an effects item
+    if (scenePackage.timeline.effects?.items) {
+      const effectItem = scenePackage.timeline.effects.items.find(item => item.id === draggedItemId);
+      if (effectItem && onUpdate) {
+        const updated = JSON.parse(JSON.stringify(scenePackage));
+        const item = updated.timeline.effects.items.find((i: any) => i.id === draggedItemId);
+        if (item) {
+          item.startTime = newStartTime;
+          onUpdate(updated);
+          return;
+        }
+      }
+    }
+
+    // For now, no parent scene clamping in new schema
+    // Items are positioned within their scene's duration
     updateItem(scenePackage, draggedItemId, { startTime: newStartTime }, onUpdate);
   } else if (isResizing && resizingItemId && resizeHandle) {
     const deltaX = e.clientX - resizeStartX;
     const deltaTime = deltaX / pixelsPerMs;
-
-    // Find parent scene for clamping
-    const parentScene = findParentSceneForItem(scenePackage.timeline.layers || [], resizingItemId);
 
     if (resizeHandle === 'left') {
       // Resize from left (change startTime and duration)
@@ -129,21 +133,73 @@ export const handleMouseMove = (
       const timeDiff = newStartTime - resizeStartTime;
       const newDuration = Math.max(100, resizeStartDuration - timeDiff); // Min 100ms
 
+      // Check if this is a camera item
+      if (scenePackage.timeline.camera?.items) {
+        const cameraItem = scenePackage.timeline.camera.items.find(item => item.id === resizingItemId);
+        if (cameraItem && onUpdate) {
+          const updated = JSON.parse(JSON.stringify(scenePackage));
+          const item = updated.timeline.camera.items.find((i: any) => i.id === resizingItemId);
+          if (item) {
+            item.startTime = newStartTime;
+            item.duration = newDuration;
+            onUpdate(updated);
+            return;
+          }
+        }
+      }
+
+      // Check if this is an effects item
+      if (scenePackage.timeline.effects?.items) {
+        const effectItem = scenePackage.timeline.effects.items.find(item => item.id === resizingItemId);
+        if (effectItem && onUpdate) {
+          const updated = JSON.parse(JSON.stringify(scenePackage));
+          const item = updated.timeline.effects.items.find((i: any) => i.id === resizingItemId);
+          if (item) {
+            item.startTime = newStartTime;
+            item.duration = newDuration;
+            onUpdate(updated);
+            return;
+          }
+        }
+      }
+
       updateItem(scenePackage, resizingItemId, {
         startTime: newStartTime,
         duration: newDuration
-      }, onUpdate);
+      } as Partial<SceneItem>, onUpdate);
     } else if (resizeHandle === 'right') {
       // Resize from right (change duration only)
       let newDuration = Math.max(100, resizeStartDuration + deltaTime);
 
-      // If in a scene, clamp duration so startTime + duration doesn't exceed scene duration
-      if (parentScene) {
-        const maxDuration = parentScene.duration - resizeStartTime;
-        newDuration = Math.min(newDuration, maxDuration);
+      // Check if this is a camera item
+      if (scenePackage.timeline.camera?.items) {
+        const cameraItem = scenePackage.timeline.camera.items.find(item => item.id === resizingItemId);
+        if (cameraItem && onUpdate) {
+          const updated = JSON.parse(JSON.stringify(scenePackage));
+          const item = updated.timeline.camera.items.find((i: any) => i.id === resizingItemId);
+          if (item) {
+            item.duration = newDuration;
+            onUpdate(updated);
+            return;
+          }
+        }
       }
 
-      updateItem(scenePackage, resizingItemId, { duration: newDuration }, onUpdate);
+      // Check if this is an effects item
+      if (scenePackage.timeline.effects?.items) {
+        const effectItem = scenePackage.timeline.effects.items.find(item => item.id === resizingItemId);
+        if (effectItem && onUpdate) {
+          const updated = JSON.parse(JSON.stringify(scenePackage));
+          const item = updated.timeline.effects.items.find((i: any) => i.id === resizingItemId);
+          if (item) {
+            item.duration = newDuration;
+            onUpdate(updated);
+            return;
+          }
+        }
+      }
+
+      updateItem(scenePackage, resizingItemId, { duration: newDuration } as Partial<SceneItem>, onUpdate);
     }
   }
 };
@@ -172,20 +228,15 @@ export const handleMouseUp = async (
         draggedItemSourceLayer !== draggedItemTargetLayer && onUpdate) {
 
       await sceneSaveService.save(scenePath, (pkg) => {
-        const layers = pkg.timeline.layers || [];
+        const scenes = pkg.timeline.scenes || [];
 
-        // Helper to find and remove item from any layer
-        const findAndRemoveItem = (layers: TimelineLayer[]): TimelineItem | null => {
-          for (const layer of layers) {
-            const index = layer.items.findIndex((item: TimelineItem) => item.id === draggedItemId);
-            if (index !== -1) {
-              return layer.items.splice(index, 1)[0];
-            }
-            // Check scene internal layers
-            for (const item of layer.items) {
-              if (item.type === 'scene' && item.layers) {
-                const found = findAndRemoveItem(item.layers);
-                if (found) return found;
+        // Helper to find and remove item from any scene layer
+        const findAndRemoveItem = (scenes: TimelineScene[]): SceneItem | null => {
+          for (const scene of scenes) {
+            for (const layer of scene.layers) {
+              const index = layer.items.findIndex((item: SceneItem) => item.id === draggedItemId);
+              if (index !== -1) {
+                return layer.items.splice(index, 1)[0];
               }
             }
           }
@@ -193,25 +244,21 @@ export const handleMouseUp = async (
         };
 
         // Helper to add item to target layer
-        const addToLayer = (layers: TimelineLayer[], targetLayerId: string, item: TimelineItem): boolean => {
-          for (const layer of layers) {
-            if (layer.id === targetLayerId) {
-              layer.items.push(item);
-              return true;
-            }
-            // Check scene internal layers
-            for (const layerItem of layer.items) {
-              if (layerItem.type === 'scene' && layerItem.layers) {
-                if (addToLayer(layerItem.layers, targetLayerId, item)) return true;
+        const addToLayer = (scenes: TimelineScene[], targetLayerId: string, item: SceneItem): boolean => {
+          for (const scene of scenes) {
+            for (const layer of scene.layers) {
+              if (layer.id === targetLayerId) {
+                layer.items.push(item);
+                return true;
               }
             }
           }
           return false;
         };
 
-        const movedItem = findAndRemoveItem(layers);
+        const movedItem = findAndRemoveItem(scenes);
         if (movedItem) {
-          addToLayer(layers, draggedItemTargetLayer, movedItem);
+          addToLayer(scenes, draggedItemTargetLayer, movedItem);
         }
 
         return pkg;
@@ -254,87 +301,8 @@ export const handleItemDrop = async (
   const sourceSceneId = e.dataTransfer.getData('sceneId');
 
   if (stagingLayerId && sourceSceneId) {
-    // Find the source scene in timeline layers
-    let sourceScene: any = null;
-    for (const layer of scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene' && item.id === sourceSceneId) {
-          sourceScene = item;
-          break;
-        }
-      }
-      if (sourceScene) break;
-    }
-    if (!sourceScene) return;
-
-    // Find staging layer by flattening scene's internal layers
-    let stagingLayer: any = null;
-    for (const layer of sourceScene.layers || []) {
-      for (const item of layer.items) {
-        if (item.id === stagingLayerId) {
-          stagingLayer = item;
-          break;
-        }
-      }
-      if (stagingLayer) break;
-    }
-    if (!stagingLayer) return;
-
-    const updated = JSON.parse(JSON.stringify(scenePackage));
-    const layers = updated.timeline.layers || [];
-    const parentScene = findParentScene(layers, layerId || '');
-
-    // Default duration - images are 1 second
-    let duration = 1000;
-
-    // Create TimelineImage from staging layer
-    const newItem: TimelineImage = {
-      id: `${stagingLayer.asset}-${Date.now()}`,
-      type: 'image',
-      name: stagingLayer.asset,
-      asset: stagingLayer.asset,
-      startTime: parentScene ? Math.max(parentScene.startTime || 0, dropTime) : dropTime,
-      duration: duration,
-      position: stagingLayer.position,
-      anchor: stagingLayer.anchor,
-      scale: stagingLayer.scale,
-      depth: stagingLayer.depth,
-      cover: stagingLayer.cover,
-      parallax: stagingLayer.parallax,
-      opacity: stagingLayer.opacity,
-      x: stagingLayer.x,
-      y: stagingLayer.y,
-      rotation: stagingLayer.rotation,
-      scaleX: stagingLayer.scaleX,
-      scaleY: stagingLayer.scaleY
-    };
-
-    // If in a scene, extend scene duration if needed
-    if (parentScene) {
-      const itemEnd = newItem.startTime + newItem.duration;
-      const sceneEnd = parentScene.startTime + parentScene.duration;
-      if (itemEnd > sceneEnd) {
-        parentScene.duration = itemEnd - parentScene.startTime;
-      }
-    }
-
-    // Add to the target layer (could be scene internal layer or timeline layer)
-    if (parentScene) {
-      const internalLayer = parentScene.layers.find((l: TimelineLayer) => l.id === layerId);
-      if (internalLayer) {
-        internalLayer.items.push(newItem);
-      }
-    } else {
-      const targetLayer = layers.find((l: TimelineLayer) => l.id === layerId);
-      if (targetLayer) {
-        targetLayer.items.push(newItem);
-      }
-    }
-
-    updated.timeline.layers = layers;
-    onUpdate(updated);
-    await window.electronAPI.saveScene(scenePath, updated);
-
+    // TODO: Implement staging layer drop for new schema
+    console.warn('Staging layer drop not yet implemented for new schema');
     return;
   }
 
@@ -344,40 +312,43 @@ export const handleItemDrop = async (
 
   if (assetKey && assetType) {
     const updated = JSON.parse(JSON.stringify(scenePackage));
-    let layers = updated.timeline.layers || [];
+    let scenes = updated.timeline.scenes || [];
 
-    // If no layerId provided, create a new layer (dropping on empty timeline)
+    // If no layerId provided, we need to create a scene first
     let targetLayerId = layerId;
-    let isNewLayer = false;
     if (!targetLayerId) {
-      const newLayer: TimelineLayer = {
-        id: `layer-${Date.now()}`,
-        name: `Layer ${layers.length + 1}`,
-        items: [],
+      // Create a new scene with a default layer
+      const newScene: TimelineScene = {
+        id: `scene-${Date.now()}`,
+        name: `Scene ${scenes.length + 1}`,
+        startTime: 0,
+        duration: 10000,
+        layers: [
+          {
+            id: `scene-${Date.now()}-layer-1`,
+            name: 'Layer 1',
+            depth: 0,
+            items: [],
+            collapsed: false
+          }
+        ],
         collapsed: false
       };
-      layers.push(newLayer);
-      targetLayerId = newLayer.id;
-      isNewLayer = true;
+      scenes.push(newScene);
+      targetLayerId = newScene.layers[0].id;
     }
-
-    const parentScene = findParentScene(layers, targetLayerId);
-    console.log('[handleItemDrop] targetLayerId:', targetLayerId, 'parentScene:', parentScene?.id, parentScene?.name);
 
     // Default duration - images are 1 second, audio is 5 seconds
     let duration = assetType === 'image' ? 1000 : 5000;
 
-    // When dropping on empty timeline (new layer), start at 0. Otherwise use dropTime.
-    const startTime = isNewLayer ? 0 : (parentScene ? Math.max(parentScene.startTime, dropTime) : dropTime);
-
-    let newItem: TimelineItem;
+    let newItem: SceneItem;
     if (assetType === 'image') {
       newItem = {
         id: `${assetKey}-${Date.now()}`,
         type: 'image',
         name: assetKey,
         asset: assetKey,
-        startTime: startTime,
+        startTime: dropTime,
         duration: duration
       };
     } else if (assetType === 'audio') {
@@ -386,7 +357,7 @@ export const handleItemDrop = async (
         type: 'audio',
         name: assetKey,
         asset: assetKey,
-        startTime: startTime,
+        startTime: dropTime,
         duration: duration,
         volume: 1.0
       };
@@ -394,31 +365,29 @@ export const handleItemDrop = async (
       return;
     }
 
-    // If in a scene, extend scene duration if needed
-    if (parentScene) {
-      const itemEnd = newItem.startTime + newItem.duration;
-      const sceneEnd = parentScene.startTime + parentScene.duration;
-      if (itemEnd > sceneEnd) {
-        parentScene.duration = itemEnd - parentScene.startTime;
-      }
-    }
-
-    // Add to the target layer (could be scene internal layer or timeline layer)
-    if (parentScene) {
-      const internalLayer = parentScene.layers.find((l: TimelineLayer) => l.id === targetLayerId);
-      if (internalLayer) {
-        internalLayer.items.push(newItem);
-      }
-    } else {
-      const targetLayer = layers.find((l: TimelineLayer) => l.id === targetLayerId);
+    // Find target layer in scenes
+    let added = false;
+    for (const scene of scenes) {
+      const targetLayer = scene.layers.find((l: SceneLayer) => l.id === targetLayerId);
       if (targetLayer) {
         targetLayer.items.push(newItem);
+        added = true;
+        break;
       }
     }
 
-    updated.timeline.layers = layers;
-    onUpdate(updated);
-    await window.electronAPI.saveScene(scenePath, updated);
+    if (added) {
+      // Register asset in manifest if not already present
+      if (assetType === 'image' && !updated.assets.images[assetKey]) {
+        updated.assets.images[assetKey] = e.dataTransfer.getData('sourcePath') || assetKey;
+      } else if (assetType === 'audio' && !updated.assets.audio[assetKey]) {
+        updated.assets.audio[assetKey] = e.dataTransfer.getData('sourcePath') || assetKey;
+      }
+
+      updated.timeline.scenes = scenes;
+      onUpdate(updated);
+      await window.electronAPI.saveScene(scenePath, updated);
+    }
   }
 };
 
@@ -456,6 +425,7 @@ export const handleLayerDragLeave = (
   setDragOverLayerId(null);
 };
 
+// handleLayerDrop is now used for scene reordering
 export const handleLayerDrop = async (
   e: React.DragEvent,
   targetLayerId: string,
@@ -482,11 +452,11 @@ export const handleLayerDrop = async (
   }
 
   const updated = JSON.parse(JSON.stringify(scenePackage));
-  const layers = updated.timeline.layers || [];
+  const scenes = updated.timeline.scenes || [];
 
-  // Find and remove the dragged layer
-  const draggedIndex = layers.findIndex((l: TimelineLayer) => l.id === draggedLayerId);
-  const targetIndex = layers.findIndex((l: TimelineLayer) => l.id === targetLayerId);
+  // Find and remove the dragged scene
+  const draggedIndex = scenes.findIndex((s: TimelineScene) => s.id === draggedLayerId);
+  const targetIndex = scenes.findIndex((s: TimelineScene) => s.id === targetLayerId);
 
   if (draggedIndex === -1 || targetIndex === -1) {
     setDraggedLayerId(null);
@@ -494,10 +464,10 @@ export const handleLayerDrop = async (
     return;
   }
 
-  const [draggedLayer] = layers.splice(draggedIndex, 1);
-  layers.splice(targetIndex, 0, draggedLayer);
+  const [draggedScene] = scenes.splice(draggedIndex, 1);
+  scenes.splice(targetIndex, 0, draggedScene);
 
-  updated.timeline.layers = layers;
+  updated.timeline.scenes = scenes;
   onUpdate(updated);
   await window.electronAPI.saveScene(scenePath, updated);
 

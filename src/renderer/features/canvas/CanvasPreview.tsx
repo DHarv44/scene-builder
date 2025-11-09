@@ -67,89 +67,84 @@ const CanvasPreview: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) 
 
   // Get all visible layers at currentTime from timeline
   const layers = React.useMemo(() => {
-    if (!scenePackage || !scenePackage.timeline.layers) return [];
+    if (!scenePackage || !scenePackage.timeline.scenes) return [];
 
     const result: Layer[] = [];
 
     if (viewMode === 'global') {
-      // Global mode: show all timeline items including scene contents
-      const collectGlobalImages = (timelineLayers: any[], timeOffset: number = 0) => {
-        timelineLayers.forEach((timelineLayer: any) => {
-          timelineLayer.items.forEach((item: any) => {
-            const itemStart = timeOffset + item.startTime;
-            const itemEnd = itemStart + item.duration;
+      // Global mode: show all active scenes and their image items
+      scenePackage.timeline.scenes.forEach((scene: any) => {
+        const sceneStart = scene.startTime;
+        const sceneEnd = sceneStart + scene.duration;
 
-            if (item.type === 'image' && currentTime >= itemStart && currentTime < itemEnd) {
-              const layer = {
-                id: item.id,
-                asset: item.asset,
-                depth: item.depth ?? 0,
-                position: { x: item.x || '50%', y: item.y || '50%' },
-                scale: item.scale || 1,
-                anchor: 'center' as const,
-                opacity: item.opacity ?? 1,
-                rotation: item.rotation ?? 0,
-                scaleX: item.scaleX ?? 1,
-                scaleY: item.scaleY ?? 1
-              };
-              result.push(layer);
-            } else if (item.type === 'scene' && currentTime >= itemStart && currentTime < itemEnd) {
-              // In global mode, recurse into scenes to show their contents
-              if (item.layers) {
-                collectGlobalImages(item.layers, itemStart);
+        if (currentTime >= sceneStart && currentTime < sceneEnd) {
+          const sceneTime = currentTime - sceneStart;
+
+          // Collect image items from this scene
+          (scene.layers || []).forEach((sceneLayer: any) => {
+            (sceneLayer.items || []).forEach((item: any) => {
+              if (item.type === 'image') {
+                const itemStart = item.startTime;
+                const itemEnd = itemStart + item.duration;
+
+                if (sceneTime >= itemStart && sceneTime < itemEnd) {
+                  const layer = {
+                    id: item.id,
+                    asset: item.asset,
+                    depth: item.depth ?? 0,
+                    position: { x: item.x || '50%', y: item.y || '50%' },
+                    scale: item.scale || 1,
+                    anchor: 'center' as const,
+                    opacity: item.opacity ?? 1,
+                    rotation: item.rotation ?? 0,
+                    scaleX: item.scaleX ?? 1,
+                    scaleY: item.scaleY ?? 1
+                  };
+                  result.push(layer);
+                }
               }
-            }
+            });
           });
-        });
-      };
-
-      collectGlobalImages(scenePackage.timeline.layers);
+        }
+      });
     } else {
       // Scene mode: show only the selected scene's internal layers
-      const findSceneAndCollect = (timelineLayers: any[], timeOffset: number = 0) => {
-        for (const timelineLayer of timelineLayers) {
-          for (const item of timelineLayer.items) {
-            const itemStart = timeOffset + item.startTime;
-            const itemEnd = itemStart + item.duration;
+      const targetScene = scenePackage.timeline.scenes.find((scene: any) => scene.id === viewMode);
 
-            if (item.type === 'scene' && item.id === viewMode && currentTime >= itemStart && currentTime < itemEnd) {
-              // Found the target scene, collect its internal layers
-              if (item.layers) {
-                item.layers.forEach((sceneLayer: any) => {
-                  sceneLayer.items.forEach((sceneItem: any) => {
-                    if (sceneItem.type === 'image') {
-                      const sceneItemStart = itemStart + sceneItem.startTime;
-                      const sceneItemEnd = sceneItemStart + sceneItem.duration;
+      if (targetScene) {
+        const sceneStart = targetScene.startTime;
+        const sceneEnd = sceneStart + targetScene.duration;
 
-                      if (currentTime >= sceneItemStart && currentTime < sceneItemEnd) {
-                        const layer = {
-                          id: sceneItem.id,
-                          asset: sceneItem.asset,
-                          depth: sceneItem.depth ?? 0,
-                          position: { x: sceneItem.x || '50%', y: sceneItem.y || '50%' },
-                          scale: sceneItem.scale || 1,
-                          anchor: 'center' as const,
-                          opacity: sceneItem.opacity ?? 1,
-                          rotation: sceneItem.rotation ?? 0,
-                          scaleX: sceneItem.scaleX ?? 1,
-                          scaleY: sceneItem.scaleY ?? 1
-                        };
-                        result.push(layer);
-                      }
-                    }
-                  });
-                });
+        if (currentTime >= sceneStart && currentTime < sceneEnd) {
+          const sceneTime = currentTime - sceneStart;
+
+          // Collect image items from the target scene
+          (targetScene.layers || []).forEach((sceneLayer: any) => {
+            (sceneLayer.items || []).forEach((item: any) => {
+              if (item.type === 'image') {
+                const itemStart = item.startTime;
+                const itemEnd = itemStart + item.duration;
+
+                if (sceneTime >= itemStart && sceneTime < itemEnd) {
+                  const layer = {
+                    id: item.id,
+                    asset: item.asset,
+                    depth: item.depth ?? 0,
+                    position: { x: item.x || '50%', y: item.y || '50%' },
+                    scale: item.scale || 1,
+                    anchor: 'center' as const,
+                    opacity: item.opacity ?? 1,
+                    rotation: item.rotation ?? 0,
+                    scaleX: item.scaleX ?? 1,
+                    scaleY: item.scaleY ?? 1
+                  };
+                  result.push(layer);
+                }
               }
-              return;
-            } else if (item.type === 'scene' && item.layers) {
-              // Recursively search in nested scenes
-              findSceneAndCollect(item.layers, itemStart);
-            }
-          }
+            });
+          });
         }
-      };
-
-      findSceneAndCollect(scenePackage.timeline.layers);
+      }
     }
 
     // Sort by depth (lower depth = back, higher depth = front)

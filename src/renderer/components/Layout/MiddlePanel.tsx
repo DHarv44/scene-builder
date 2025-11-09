@@ -21,19 +21,12 @@ const MiddlePanel: React.FC<{ viewMode: 'global' | string }> = ({ viewMode }) =>
   const availableScenes = React.useMemo(() => {
     if (!scenePackage) return [];
     const scenes: { id: string; name: string }[] = [];
-    const collectScenes = (layers: any[]) => {
-      layers.forEach(layer => {
-        layer.items.forEach((item: any) => {
-          if (item.type === 'scene') {
-            scenes.push({ id: item.id, name: item.name });
-            if (item.layers) {
-              collectScenes(item.layers);
-            }
-          }
-        });
-      });
-    };
-    collectScenes(scenePackage.timeline.layers || []);
+
+    // Collect from top-level scenes
+    (scenePackage.timeline.scenes || []).forEach((scene: any) => {
+      scenes.push({ id: scene.id, name: scene.name });
+    });
+
     return scenes;
   }, [scenePackage]);
 

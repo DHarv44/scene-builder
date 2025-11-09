@@ -1,9 +1,9 @@
 import type {
   ScenePackage,
-  TimelineLayer,
-  TimelineItem,
-  TimelineImage,
   TimelineScene,
+  SceneLayer,
+  SceneItem,
+  ImageItem,
   Layer
 } from '../../types/scenePackage';
 
@@ -13,14 +13,12 @@ import type {
  */
 export class ScenePackageService {
   /**
-   * Find a scene item by ID in timeline layers
+   * Find a scene item by ID in timeline scenes
    */
   static findSceneById(scenePackage: ScenePackage, sceneId: string): TimelineScene | null {
-    for (const layer of scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene' && item.id === sceneId) {
-          return item as TimelineScene;
-        }
+    for (const scene of scenePackage.timeline.scenes || []) {
+      if (scene.id === sceneId) {
+        return scene;
       }
     }
     return null;
@@ -30,14 +28,10 @@ export class ScenePackageService {
    * Find the scene active at a specific time
    */
   static findSceneAtTime(scenePackage: ScenePackage, time: number): TimelineScene | null {
-    for (const layer of scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene') {
-          const sceneEnd = item.startTime + item.duration;
-          if (time >= item.startTime && time < sceneEnd) {
-            return item as TimelineScene;
-          }
-        }
+    for (const scene of scenePackage.timeline.scenes || []) {
+      const sceneEnd = scene.startTime + scene.duration;
+      if (time >= scene.startTime && time < sceneEnd) {
+        return scene;
       }
     }
     return null;
@@ -58,12 +52,12 @@ export class ScenePackageService {
     if (!scene || !scene.layers) return updated;
 
     // Update depths in scene's internal layers
-    scene.layers.forEach((timelineLayer: TimelineLayer) => {
-      timelineLayer.items.forEach((item: TimelineItem) => {
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items.forEach((item: SceneItem) => {
         if (item.type === 'image') {
           const newDepth = depthUpdates.get(item.id);
           if (newDepth !== undefined) {
-            (item as TimelineImage).depth = newDepth;
+            (item as ImageItem).depth = newDepth;
           }
         }
       });
@@ -88,11 +82,11 @@ export class ScenePackageService {
     if (!scene || !scene.layers) return updated;
 
     // Collect all image items
-    const allImageItems: TimelineImage[] = [];
-    scene.layers.forEach((layer: TimelineLayer) => {
-      layer.items.forEach((item: TimelineItem) => {
+    const allImageItems: ImageItem[] = [];
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items.forEach((item: SceneItem) => {
         if (item.type === 'image') {
-          allImageItems.push(item as TimelineImage);
+          allImageItems.push(item as ImageItem);
         }
       });
     });
@@ -129,35 +123,32 @@ export class ScenePackageService {
   ): ScenePackage {
     const updated = JSON.parse(JSON.stringify(scenePackage)) as ScenePackage;
 
-    // Recursively update layer properties in entire timeline tree
-    const updateInLayers = (layers: TimelineLayer[]) => {
-      layers.forEach((timelineLayer: TimelineLayer) => {
-        timelineLayer.items.forEach((item: TimelineItem) => {
-          const updates = layerUpdates.get(item.id);
-          if (updates && item.type === 'image') {
-            const imgItem = item as TimelineImage;
+    // Update layer properties in all scenes
+    const updateInScenes = (scenes: TimelineScene[]) => {
+      scenes.forEach((scene: TimelineScene) => {
+        scene.layers.forEach((sceneLayer: SceneLayer) => {
+          sceneLayer.items.forEach((item: SceneItem) => {
+            const updates = layerUpdates.get(item.id);
+            if (updates && item.type === 'image') {
+              const imgItem = item as ImageItem;
 
-            if (updates.position) {
-              (imgItem as any).x = updates.position.x;
-              (imgItem as any).y = updates.position.y;
+              if (updates.position) {
+                (imgItem as any).x = updates.position.x;
+                (imgItem as any).y = updates.position.y;
+              }
+              if (updates.scale !== undefined) {
+                imgItem.scale = updates.scale;
+              }
+              if (updates.depth !== undefined) {
+                imgItem.depth = updates.depth;
+              }
             }
-            if (updates.scale !== undefined) {
-              imgItem.scale = updates.scale;
-            }
-            if (updates.depth !== undefined) {
-              imgItem.depth = updates.depth;
-            }
-          }
-
-          // Recursively check scene internal layers
-          if (item.type === 'scene' && item.layers) {
-            updateInLayers(item.layers);
-          }
+          });
         });
       });
     };
 
-    updateInLayers(updated.timeline.layers || []);
+    updateInScenes(updated.timeline.scenes || []);
     return updated;
   }
 
@@ -176,11 +167,11 @@ export class ScenePackageService {
     if (!scene || !scene.layers || layerIds.length === 0) return updated;
 
     // Collect all image items
-    const allImageItems: TimelineImage[] = [];
-    scene.layers.forEach((layer: TimelineLayer) => {
-      layer.items.forEach((item: TimelineItem) => {
+    const allImageItems: ImageItem[] = [];
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items.forEach((item: SceneItem) => {
         if (item.type === 'image') {
-          allImageItems.push(item as TimelineImage);
+          allImageItems.push(item as ImageItem);
         }
       });
     });
@@ -218,11 +209,11 @@ export class ScenePackageService {
     if (!scene || !scene.layers || layerIds.length === 0) return updated;
 
     // Collect all image items
-    const allImageItems: TimelineImage[] = [];
-    scene.layers.forEach((layer: TimelineLayer) => {
-      layer.items.forEach((item: TimelineItem) => {
+    const allImageItems: ImageItem[] = [];
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items.forEach((item: SceneItem) => {
         if (item.type === 'image') {
-          allImageItems.push(item as TimelineImage);
+          allImageItems.push(item as ImageItem);
         }
       });
     });
@@ -260,11 +251,11 @@ export class ScenePackageService {
     if (!scene || !scene.layers || layerIds.length === 0) return updated;
 
     // Collect all image items
-    const allImageItems: TimelineImage[] = [];
-    scene.layers.forEach((layer: TimelineLayer) => {
-      layer.items.forEach((item: TimelineItem) => {
+    const allImageItems: ImageItem[] = [];
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items.forEach((item: SceneItem) => {
         if (item.type === 'image') {
-          allImageItems.push(item as TimelineImage);
+          allImageItems.push(item as ImageItem);
         }
       });
     });
@@ -304,11 +295,11 @@ export class ScenePackageService {
     if (!scene || !scene.layers || layerIds.length === 0) return updated;
 
     // Collect all image items
-    const allImageItems: TimelineImage[] = [];
-    scene.layers.forEach((layer: TimelineLayer) => {
-      layer.items.forEach((item: TimelineItem) => {
+    const allImageItems: ImageItem[] = [];
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items.forEach((item: SceneItem) => {
         if (item.type === 'image') {
-          allImageItems.push(item as TimelineImage);
+          allImageItems.push(item as ImageItem);
         }
       });
     });
@@ -347,9 +338,9 @@ export class ScenePackageService {
 
     if (!scene || !scene.layers) return updated;
 
-    // Remove items from all layers
-    scene.layers.forEach((layer: TimelineLayer) => {
-      layer.items = layer.items.filter(item => !layerIds.includes(item.id));
+    // Remove items from all scene layers
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items = sceneLayer.items.filter(item => !layerIds.includes(item.id));
     });
 
     return updated;
@@ -375,6 +366,7 @@ export class ScenePackageService {
       scene.layers = [{
         id: `${sceneId}-default-layer`,
         name: 'Default Layer',
+        depth: 0,
         items: [],
         collapsed: false
       }];
@@ -382,22 +374,22 @@ export class ScenePackageService {
 
     // Calculate max depth for new item
     let maxDepth = -1;
-    scene.layers.forEach((layer: TimelineLayer) => {
-      layer.items.forEach((item: TimelineItem) => {
-        if (item.type === 'image' && (item as TimelineImage).depth !== undefined) {
-          maxDepth = Math.max(maxDepth, (item as TimelineImage).depth!);
+    scene.layers.forEach((sceneLayer: SceneLayer) => {
+      sceneLayer.items.forEach((item: SceneItem) => {
+        if (item.type === 'image' && (item as ImageItem).depth !== undefined) {
+          maxDepth = Math.max(maxDepth, (item as ImageItem).depth!);
         }
       });
     });
 
     // Add new image item to first layer
-    const newItem: any = {
+    const newItem: ImageItem = {
       id: `${assetKey}-${Date.now()}`,
       type: 'image',
       name: layerName || assetKey,
       asset: assetKey,
-      x: '50%',
-      y: '50%',
+      x: 960,  // Center of 1920px canvas
+      y: 540,  // Center of 1080px canvas
       scale: 1,
       depth: maxDepth + 1,
       startTime: 0,

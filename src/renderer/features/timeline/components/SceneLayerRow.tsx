@@ -6,7 +6,6 @@ import { findContextMenuTarget } from '../utils/Timeline.utils';
 interface SceneLayerRowProps {
   sceneLayer: TimelineLayer;
   sceneItem: TimelineScene;
-  isFirstLayer: boolean;
   duration: number;
   pixelsPerMs: number;
   isDragging: boolean;
@@ -25,7 +24,6 @@ interface SceneLayerRowProps {
 const SceneLayerRow: React.FC<SceneLayerRowProps> = ({
   sceneLayer,
   sceneItem,
-  isFirstLayer,
   duration,
   pixelsPerMs,
   isDragging,
@@ -53,7 +51,10 @@ const SceneLayerRow: React.FC<SceneLayerRowProps> = ({
           setContextMenu({ type: 'layer', targetId: sceneLayer.id, x: e.clientX, y: e.clientY });
         }}
       >
-        <span className="track-name scene-layer-name">└─ {sceneLayer.name}</span>
+        <div className="scene-layer-header-content">
+          <span className="scene-layer-tree-line">└─</span>
+          <span className="track-name scene-layer-name">{sceneLayer.name}</span>
+        </div>
       </th>
       <td
         className="track-content scene-layer-content"
@@ -79,56 +80,13 @@ const SceneLayerRow: React.FC<SceneLayerRowProps> = ({
           position: 'relative'
         }}
       >
-        {/* Render scene bounds container with header on first layer only */}
-        <div
-          className="scene-bounds-container"
-          style={{
-            position: 'absolute',
-            left: `${sceneItem.startTime * pixelsPerMs}px`,
-            width: `${sceneItem.duration * pixelsPerMs}px`,
-            height: '100%',
-            background: 'rgba(14, 99, 156, 0.08)',
-            borderLeft: '2px solid rgba(14, 99, 156, 0.3)',
-            borderRight: '2px solid rgba(14, 99, 156, 0.3)',
-            borderTop: isFirstLayer ? '2px solid rgba(14, 99, 156, 0.5)' : 'none',
-            pointerEvents: 'none'
-          }}
-        >
-          {/* Scene header - only on first layer */}
-          {isFirstLayer && (
-            <div
-              style={{
-                height: '24px',
-                background: 'rgba(14, 99, 156, 0.3)',
-                borderBottom: '1px solid rgba(14, 99, 156, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: '#5a9fd4',
-                textShadow: '0 1px 2px rgba(0,0,0,0.5)'
-              }}
-            >
-              {sceneItem.name}
-            </div>
-          )}
-        </div>
-        {/* Render scene layer items */}
-        <div style={{
-          position: 'absolute',
-          left: `${sceneItem.startTime * pixelsPerMs}px`,
-          width: `${sceneItem.duration * pixelsPerMs}px`,
-          height: '100%',
-          top: isFirstLayer ? '24px' : '0'
-        }}>
-          {sceneLayer.items.map((item) => {
-            if (isDragging && draggedItemId === item.id && draggedItemSourceLayer === sceneLayer.id && draggedItemTargetLayer !== sceneLayer.id) {
-              return null;
-            }
-            return renderItem(item, sceneLayer.id, sceneItem.startTime);
-          })}
-        </div>
+        {/* Render clips positioned by their startTime (relative to scene) */}
+        {sceneLayer.items.map((item) => {
+          if (isDragging && draggedItemId === item.id && draggedItemSourceLayer === sceneLayer.id && draggedItemTargetLayer !== sceneLayer.id) {
+            return null;
+          }
+          return renderItem(item, sceneLayer.id, sceneItem.startTime);
+        })}
       </td>
     </tr>
   );

@@ -18,14 +18,10 @@ const SceneLayers: React.FC = () => {
     if (!scenePackage) return [];
     const scenes: Array<{ id: string; name: string }> = [];
 
-    scenePackage.timeline.layers.forEach((layer: any) => {
-      layer.items.forEach((item: any) => {
-        if (item.type === 'scene') {
-          scenes.push({
-            id: item.id,
-            name: item.name || item.id
-          });
-        }
+    scenePackage.timeline.scenes.forEach((scene: any) => {
+      scenes.push({
+        id: scene.id,
+        name: scene.name || scene.id
       });
     });
 

@@ -54,37 +54,34 @@ export class TimelinePlayer {
     this.cameras.clear();
     this.titleCards.clear();
 
-    // Initialize cameras for each scene (find scenes in timeline.layers)
-    for (const layer of scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene') {
-          const scene = item as any;
-          if (scene.camera) {
-            const cameraConfig: CameraConfig = {
-              keyframes: scene.camera.keyframes,
-              enableMouseParallax: false // Disabled in preview
+    // Initialize cameras for each scene (using new timeline.scenes structure)
+    for (const scene of scenePackage.timeline.scenes || []) {
+      if ((scene as any).camera) {
+        const cameraConfig: CameraConfig = {
+          keyframes: (scene as any).camera.keyframes,
+          enableMouseParallax: false // Disabled in preview
+        };
+        this.cameras.set(scene.id, new CameraController(cameraConfig));
+      }
+
+      // Initialize title cards for each scene
+      if ((scene as any).titleCards) {
+        const cards: (TitleCard | TitleCardGroup)[] = [];
+
+        (scene as any).titleCards.forEach((cardConfig: any) => {
+          if ('cards' in cardConfig) {
+            // TitleCardGroup
+            const groupConfig: TitleCardGroupConfig = {
+              position: cardConfig.position,
+              textAlign: cardConfig.textAlign,
+              fadeInStart: cardConfig.fadeInStart,
+              holdDuration: cardConfig.holdDuration,
+              cards: cardConfig.cards
             };
-            this.cameras.set(scene.id, new CameraController(cameraConfig));
-          }
-
-          // Initialize title cards for each scene
-          if (scene.titleCards) {
-            const cards: (TitleCard | TitleCardGroup)[] = [];
-
-            scene.titleCards.forEach((cardConfig: any) => {
-              if ('cards' in cardConfig) {
-                // TitleCardGroup
-                const groupConfig: TitleCardGroupConfig = {
-                  position: cardConfig.position,
-                  textAlign: cardConfig.textAlign,
-                  fadeInStart: cardConfig.fadeInStart,
-                  holdDuration: cardConfig.holdDuration,
-                  cards: cardConfig.cards
-                };
-                cards.push(new TitleCardGroup(groupConfig, this.canvasWidth, this.canvasHeight));
-              } else {
-                // Single TitleCard
-                const titleConfig: TitleCardConfig = {
+            cards.push(new TitleCardGroup(groupConfig, this.canvasWidth, this.canvasHeight));
+          } else {
+            // Single TitleCard
+            const titleConfig: TitleCardConfig = {
               text: cardConfig.text,
               subtitle: cardConfig.subtitle,
               fontSize: cardConfig.fontSize,
@@ -102,12 +99,10 @@ export class TimelinePlayer {
               letterSpacing: cardConfig.letterSpacing
             };
             cards.push(new TitleCard(titleConfig, this.canvasWidth, this.canvasHeight));
-              }
-            });
-
-            this.titleCards.set(scene.id, cards);
           }
-        }
+        });
+
+        this.titleCards.set(scene.id, cards);
       }
     }
 
@@ -193,13 +188,11 @@ export class TimelinePlayer {
     // Advance time
     this.currentTime += dt;
 
-    // Calculate max duration from all items
+    // Calculate max duration from all scenes
     let maxDuration = 0;
-    for (const layer of this.scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        const itemEnd = item.startTime + item.duration;
-        if (itemEnd > maxDuration) maxDuration = itemEnd;
-      }
+    for (const scene of this.scenePackage.timeline.scenes || []) {
+      const sceneEnd = scene.startTime + scene.duration;
+      if (sceneEnd > maxDuration) maxDuration = sceneEnd;
     }
 
     // Loop or stop at end
@@ -242,60 +235,70 @@ export class TimelinePlayer {
 
     const activeAudioIds = new Set<string>();
 
-    // Recursively find all active audio items
-    const checkAudioItems = (layers: any[], timeOffset: number = 0) => {
-      layers.forEach(layer => {
-        layer.items.forEach((item: any) => {
-          const itemStart = timeOffset + item.startTime;
-          const itemEnd = itemStart + item.duration;
+    // Find all active audio items in all scenes
+    const checkAudioInScenes = (scenes: any[]) => {
+      scenes.forEach((scene: any) => {
+        const sceneStart = scene.startTime;
+        const sceneEnd = sceneStart + scene.duration;
 
-          if (item.type === 'audio' && this.currentTime >= itemStart && this.currentTime < itemEnd) {
-            activeAudioIds.add(item.id);
+        // Only process scenes that are active
+        if (this.currentTime >= sceneStart && this.currentTime < sceneEnd) {
+          const sceneTime = this.currentTime - sceneStart;
 
-            const audio = this.loadedAudio.get(item.asset);
-            if (!audio) return;
+          // Check all scene layers
+          (scene.layers || []).forEach((sceneLayer: any) => {
+            (sceneLayer.items || []).forEach((item: any) => {
+              if (item.type === 'audio') {
+                const itemStart = item.startTime;
+                const itemEnd = itemStart + item.duration;
 
-            // Calculate audio time relative to item start
-            const audioTime = (this.currentTime - itemStart) / 1000; // Convert ms to seconds
+                if (sceneTime >= itemStart && sceneTime < itemEnd) {
+                  activeAudioIds.add(item.id);
 
-            // Check if this audio is already playing
-            if (!this.activeTimelineAudio.has(item.id)) {
-              // Start playing this audio
-              this.activeTimelineAudio.set(item.id, audio);
-              audio.volume = item.volume ?? 1.0;
-              audio.currentTime = Math.max(0, audioTime);
+                  const audio = this.loadedAudio.get(item.asset);
+                  if (!audio) return;
 
-              if (this.isPlaying) {
-                audio.play().catch(err => console.error('Error playing timeline audio:', err));
+                  // Calculate audio time relative to item start
+                  const audioTime = (sceneTime - itemStart) / 1000; // Convert ms to seconds
+
+                  // Check if this audio is already playing
+                  if (!this.activeTimelineAudio.has(item.id)) {
+                    // Start playing this audio
+                    this.activeTimelineAudio.set(item.id, audio);
+                    audio.volume = item.volume ?? 1.0;
+                    audio.currentTime = Math.max(0, audioTime);
+
+                    if (this.isPlaying) {
+                      audio.play().catch(err => console.error('Error playing timeline audio:', err));
+                    }
+                  } else {
+                    // Only sync if drift is significant (more than 0.5 seconds)
+                    const drift = Math.abs(audio.currentTime - audioTime);
+                    if (drift > 0.5) {
+                      audio.currentTime = Math.max(0, audioTime);
+                    }
+
+                    // Ensure playback state matches
+                    if (this.isPlaying && audio.paused) {
+                      audio.play().catch(err => console.error('Error playing timeline audio:', err));
+                    } else if (!this.isPlaying && !audio.paused) {
+                      audio.pause();
+                    }
+
+                    // Update volume if changed
+                    if (item.volume !== undefined && Math.abs(audio.volume - item.volume) > 0.01) {
+                      audio.volume = item.volume;
+                    }
+                  }
+                }
               }
-            } else {
-              // Only sync if drift is significant (more than 0.5 seconds)
-              const drift = Math.abs(audio.currentTime - audioTime);
-              if (drift > 0.5) {
-                audio.currentTime = Math.max(0, audioTime);
-              }
-
-              // Ensure playback state matches
-              if (this.isPlaying && audio.paused) {
-                audio.play().catch(err => console.error('Error playing timeline audio:', err));
-              } else if (!this.isPlaying && !audio.paused) {
-                audio.pause();
-              }
-
-              // Update volume if changed
-              if (item.volume !== undefined && Math.abs(audio.volume - item.volume) > 0.01) {
-                audio.volume = item.volume;
-              }
-            }
-          } else if (item.type === 'scene' && item.layers) {
-            // Recursively check scene internal layers
-            checkAudioItems(item.layers, itemStart);
-          }
-        });
+            });
+          });
+        }
       });
     };
 
-    checkAudioItems(this.scenePackage.timeline.layers || []);
+    checkAudioInScenes(this.scenePackage.timeline.scenes || []);
 
     // Stop any audio that's no longer active
     const toRemove: string[] = [];
@@ -313,7 +316,7 @@ export class TimelinePlayer {
   /**
    * Update audio playback based on current scene
    */
-  private updateSceneAudio(scene: Scene): void {
+  private updateSceneAudio(scene: any): void {
     // Check if we've switched to a different scene
     if (scene.id !== this.currentSceneId) {
       // Stop previous scene audio
@@ -588,7 +591,7 @@ export class TimelinePlayer {
   /**
    * Render scene transitions (fade in/out)
    */
-  private renderTransitions(ctx: CanvasRenderingContext2D, scene: Scene, sceneTime: number): void {
+  private renderTransitions(ctx: CanvasRenderingContext2D, scene: any, sceneTime: number): void {
     if (!scene.transitions) return;
 
     let alpha = 0;
@@ -620,15 +623,11 @@ export class TimelinePlayer {
   private getCurrentScene(): any | null {
     if (!this.scenePackage) return null;
 
-    // Find scene items in timeline.layers
-    for (const layer of this.scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene') {
-          const sceneEnd = item.startTime + item.duration;
-          if (this.currentTime >= item.startTime && this.currentTime < sceneEnd) {
-            return item;
-          }
-        }
+    // Find scene in timeline.scenes
+    for (const scene of this.scenePackage.timeline.scenes || []) {
+      const sceneEnd = scene.startTime + scene.duration;
+      if (this.currentTime >= scene.startTime && this.currentTime < sceneEnd) {
+        return scene;
       }
     }
 
@@ -712,13 +711,11 @@ export class TimelinePlayer {
   getDuration(): number {
     if (!this.scenePackage) return 0;
 
-    // Calculate max duration from all items
+    // Calculate max duration from all scenes
     let maxDuration = 0;
-    for (const layer of this.scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        const itemEnd = item.startTime + item.duration;
-        if (itemEnd > maxDuration) maxDuration = itemEnd;
-      }
+    for (const scene of this.scenePackage.timeline.scenes || []) {
+      const sceneEnd = scene.startTime + scene.duration;
+      if (sceneEnd > maxDuration) maxDuration = sceneEnd;
     }
     return maxDuration;
   }

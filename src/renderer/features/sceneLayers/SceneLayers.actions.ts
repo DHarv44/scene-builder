@@ -86,6 +86,7 @@ export const importAssets = async (
       scene.layers = [{
         id: `${sceneId}-default-layer`,
         name: 'Default Layer',
+        depth: 0,
         items: [],
         collapsed: false
       }];
@@ -102,7 +103,7 @@ export const importAssets = async (
     });
 
     // Add each imported asset as an image item
-    Object.keys(result.assets).forEach((assetKey, index) => {
+    Object.keys(result.assets || {}).forEach((assetKey, index) => {
       scene.layers[0].items.push({
         id: `${assetKey}-${Date.now()}-${index}`,
         type: 'image',

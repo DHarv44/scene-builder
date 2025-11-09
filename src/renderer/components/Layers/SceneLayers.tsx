@@ -23,19 +23,17 @@ const SceneLayers: React.FC<SceneLayersProps> = ({
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
 
-  // Find the scene item in timeline layers
-  const findSceneItem = (layers: any[], sceneId: string): any | null => {
-    for (const layer of layers) {
-      for (const item of layer.items) {
-        if (item.type === 'scene' && item.id === sceneId) {
-          return item;
-        }
+  // Find the scene item in timeline scenes
+  const findSceneItem = (scenes: any[], sceneId: string): any | null => {
+    for (const scene of scenes) {
+      if (scene.id === sceneId) {
+        return scene;
       }
     }
     return null;
   };
 
-  const currentScene = selectedSceneId ? findSceneItem(scenePackage?.timeline.layers || [], selectedSceneId) : null;
+  const currentScene = selectedSceneId ? findSceneItem(scenePackage?.timeline.scenes || [], selectedSceneId) : null;
 
   // Flatten scene's internal timeline layers into Layer[] for canvas editing
   const layers: Layer[] = React.useMemo(() => {
@@ -103,50 +101,49 @@ const SceneLayers: React.FC<SceneLayersProps> = ({
           const updated = JSON.parse(JSON.stringify(scenePackage));
           updated.assets.images = { ...updated.assets.images, ...result.assets };
 
-          // Find the scene in timeline layers and add images
-          for (const layer of updated.timeline.layers || []) {
-            for (const item of layer.items) {
-              if (item.type === 'scene' && item.id === currentScene.id) {
-                // Ensure scene has at least one internal layer
-                if (!item.layers || item.layers.length === 0) {
-                  item.layers = [{
-                    id: `${item.id}-default-layer`,
-                    name: 'Default Layer',
-                    items: [],
-                    collapsed: false
-                  }];
-                }
-
-                // Calculate max depth for new items
-                let maxDepth = -1;
-                item.layers.forEach((tLayer: any) => {
-                  tLayer.items.forEach((img: any) => {
-                    if (img.type === 'image' && img.depth !== undefined) {
-                      maxDepth = Math.max(maxDepth, img.depth);
-                    }
-                  });
-                });
-
-                // Add each imported asset as an image item
-                Object.keys(result.assets).forEach((assetKey, index) => {
-                  item.layers[0].items.push({
-                    id: `${assetKey}-${Date.now()}-${index}`,
-                    type: 'image',
-                    name: assetKey,
-                    asset: assetKey,
-                    x: '50%',
-                    y: '50%',
-                    scale: 1,
-                    depth: maxDepth + index + 1,
-                    startTime: 0,
-                    duration: 1000
-                  });
-                });
-
-                onUpdate(updated);
-                await window.electronAPI.saveScene(scenePath, updated);
-                return;
+          // Find the scene in timeline and add images
+          for (const scene of updated.timeline.scenes || []) {
+            if (scene.id === currentScene.id) {
+              // Ensure scene has at least one internal layer
+              if (!scene.layers || scene.layers.length === 0) {
+                scene.layers = [{
+                  id: `${scene.id}-default-layer`,
+                  name: 'Default Layer',
+                  depth: 0,
+                  items: [],
+                  collapsed: false
+                }];
               }
+
+              // Calculate max depth for new items
+              let maxDepth = -1;
+              scene.layers.forEach((tLayer: any) => {
+                tLayer.items.forEach((img: any) => {
+                  if (img.type === 'image' && img.depth !== undefined) {
+                    maxDepth = Math.max(maxDepth, img.depth);
+                  }
+                });
+              });
+
+              // Add each imported asset as an image item
+              Object.keys(result.assets).forEach((assetKey, index) => {
+                scene.layers[0].items.push({
+                  id: `${assetKey}-${Date.now()}-${index}`,
+                  type: 'image',
+                  name: assetKey,
+                  asset: assetKey,
+                  x: '50%',
+                  y: '50%',
+                  scale: 1,
+                  depth: maxDepth + index + 1,
+                  startTime: 0,
+                  duration: 1000
+                });
+              });
+
+              onUpdate(updated);
+              await window.electronAPI.saveScene(scenePath, updated);
+              return;
             }
           }
         }
@@ -159,48 +156,47 @@ const SceneLayers: React.FC<SceneLayersProps> = ({
 
     const updated = JSON.parse(JSON.stringify(scenePackage));
 
-    // Find the scene in timeline layers and add image item to its first internal layer
-    for (const layer of updated.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene' && item.id === currentScene.id) {
-          // Ensure scene has at least one internal layer
-          if (!item.layers || item.layers.length === 0) {
-            item.layers = [{
-              id: `${item.id}-default-layer`,
-              name: 'Default Layer',
-              items: [],
-              collapsed: false
-            }];
-          }
-
-          // Calculate max depth for new item
-          let maxDepth = -1;
-          item.layers.forEach((tLayer: any) => {
-            tLayer.items.forEach((img: any) => {
-              if (img.type === 'image' && img.depth !== undefined) {
-                maxDepth = Math.max(maxDepth, img.depth);
-              }
-            });
-          });
-
-          // Add image to the first internal layer
-          item.layers[0].items.push({
-            id: `${assetKey}-${Date.now()}`,
-            type: 'image',
-            name: assetKey,
-            asset: assetKey,
-            x: '50%',
-            y: '50%',
-            scale: 1,
-            depth: maxDepth + 1,
-            startTime: 0,
-            duration: 1000
-          });
-
-          onUpdate(updated);
-          await window.electronAPI.saveScene(scenePath, updated);
-          return;
+    // Find the scene in timeline and add image item to its first internal layer
+    for (const scene of updated.timeline.scenes || []) {
+      if (scene.id === currentScene.id) {
+        // Ensure scene has at least one internal layer
+        if (!scene.layers || scene.layers.length === 0) {
+          scene.layers = [{
+            id: `${scene.id}-default-layer`,
+            name: 'Default Layer',
+            depth: 0,
+            items: [],
+            collapsed: false
+          }];
         }
+
+        // Calculate max depth for new item
+        let maxDepth = -1;
+        scene.layers.forEach((tLayer: any) => {
+          tLayer.items.forEach((img: any) => {
+            if (img.type === 'image' && img.depth !== undefined) {
+              maxDepth = Math.max(maxDepth, img.depth);
+            }
+          });
+        });
+
+        // Add image to the first internal layer
+        scene.layers[0].items.push({
+          id: `${assetKey}-${Date.now()}`,
+          type: 'image',
+          name: assetKey,
+          asset: assetKey,
+          x: '50%',
+          y: '50%',
+          scale: 1,
+          depth: maxDepth + 1,
+          startTime: 0,
+          duration: 1000
+        });
+
+        onUpdate(updated);
+        await window.electronAPI.saveScene(scenePath, updated);
+        return;
       }
     }
   };
@@ -211,19 +207,17 @@ const SceneLayers: React.FC<SceneLayersProps> = ({
     const updated = JSON.parse(JSON.stringify(scenePackage));
 
     // Find scene in timeline and remove the item from its internal layers
-    for (const layer of updated.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene' && item.id === currentScene.id) {
-          // Remove item from all internal layers
-          if (item.layers) {
-            item.layers.forEach((tLayer: any) => {
-              tLayer.items = tLayer.items.filter((i: any) => i.id !== layerId);
-            });
-          }
-          onUpdate(updated);
-          await window.electronAPI.saveScene(scenePath, updated);
-          return;
+    for (const scene of updated.timeline.scenes || []) {
+      if (scene.id === currentScene.id) {
+        // Remove item from all internal layers
+        if (scene.layers) {
+          scene.layers.forEach((tLayer: any) => {
+            tLayer.items = tLayer.items.filter((i: any) => i.id !== layerId);
+          });
         }
+        onUpdate(updated);
+        await window.electronAPI.saveScene(scenePath, updated);
+        return;
       }
     }
   };
@@ -269,45 +263,43 @@ const SceneLayers: React.FC<SceneLayersProps> = ({
     const updated = JSON.parse(JSON.stringify(scenePackage));
 
     // Find and update depth values by reordering
-    for (const layer of updated.timeline.layers || []) {
-      for (const item of layer.items) {
-        if (item.type === 'scene' && item.id === currentScene.id) {
-          if (item.layers) {
-            // Collect all image items with their current depths
-            const allImageItems: any[] = [];
-            item.layers.forEach((tLayer: any) => {
-              tLayer.items.forEach((img: any) => {
-                if (img.type === 'image') {
-                  allImageItems.push(img);
-                }
-              });
+    for (const scene of updated.timeline.scenes || []) {
+      if (scene.id === currentScene.id) {
+        if (scene.layers) {
+          // Collect all image items with their current depths
+          const allImageItems: any[] = [];
+          scene.layers.forEach((tLayer: any) => {
+            tLayer.items.forEach((img: any) => {
+              if (img.type === 'image') {
+                allImageItems.push(img);
+              }
             });
+          });
 
-            // Sort by current depth to get the current ordering
-            allImageItems.sort((a, b) => a.depth - b.depth);
+          // Sort by current depth to get the current ordering
+          allImageItems.sort((a, b) => a.depth - b.depth);
 
-            // Find indices in the sorted array
-            const draggedIndex = allImageItems.findIndex(img => img.id === draggedLayerId);
-            const targetIndex = allImageItems.findIndex(img => img.id === targetLayerId);
+          // Find indices in the sorted array
+          const draggedIndex = allImageItems.findIndex(img => img.id === draggedLayerId);
+          const targetIndex = allImageItems.findIndex(img => img.id === targetLayerId);
 
-            if (draggedIndex === -1 || targetIndex === -1) return;
+          if (draggedIndex === -1 || targetIndex === -1) return;
 
-            // Reorder: remove dragged item and insert at target position
-            const [draggedItem] = allImageItems.splice(draggedIndex, 1);
-            allImageItems.splice(targetIndex, 0, draggedItem);
+          // Reorder: remove dragged item and insert at target position
+          const [draggedItem] = allImageItems.splice(draggedIndex, 1);
+          allImageItems.splice(targetIndex, 0, draggedItem);
 
-            // Reassign depths based on new order (0, 1, 2, 3...)
-            allImageItems.forEach((img, index) => {
-              img.depth = index;
-            });
-          }
-
-          onUpdate(updated);
-          await window.electronAPI.saveScene(scenePath, updated);
-          setDraggedLayerId(null);
-          setDragOverLayerId(null);
-          return;
+          // Reassign depths based on new order (0, 1, 2, 3...)
+          allImageItems.forEach((img, index) => {
+            img.depth = index;
+          });
         }
+
+        onUpdate(updated);
+        await window.electronAPI.saveScene(scenePath, updated);
+        setDraggedLayerId(null);
+        setDragOverLayerId(null);
+        return;
       }
     }
 

@@ -2,8 +2,11 @@ import React, { useState, useMemo, useRef, useEffect, useImperativeHandle, forwa
 import type {
   TimelineLayer,
   TimelineItem,
-  TimelineScene
+  TimelineScene,
+  SceneLayer,
+  EffectTrack
 } from '../../../types/scenePackage';
+import type { CameraTrack as CameraTrackType } from '../../../types/scenePackage';
 import ContextMenu, { ContextMenuItem } from '../../../components/Preview/ContextMenu';
 import './Timeline.css';
 
@@ -50,6 +53,8 @@ import { useTimelineNavigation } from '../../../context/TimelineNavigationContex
 import AssetPickerDialog from '../../../components/Dialogs/AssetPickerDialog';
 import LayerRow from './LayerRow';
 import SceneLayerRow from './SceneLayerRow';
+import CameraTrack from './CameraTrack';
+import EffectsTrack from './EffectsTrack';
 
 export interface TimelineHandle {
   scrollToEnd: () => void;
@@ -74,6 +79,8 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
   const [lockedLayers, setLockedLayers] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [collapsedScenes, setCollapsedScenes] = useState<Set<string>>(new Set());
+  const [cameraTrackCollapsed, setCameraTrackCollapsed] = useState(false);
+  const [effectsTrackCollapsed, setEffectsTrackCollapsed] = useState(false);
   const [assetPickerDialog, setAssetPickerDialog] = useState<{
     type: 'images' | 'audio';
     layerId: string;
@@ -186,49 +193,46 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
     });
   };
 
-  // Get timeline layers (filtered by focused scene if applicable)
-  const timelineLayers = useMemo(() => {
+  // Get timeline scenes (top-level tracks)
+  const timelineScenes = useMemo(() => {
     if (!scenePackage) return [];
+    return scenePackage.timeline.scenes || [];
+  }, [scenePackage]);
 
-    // If no scene is focused, return root timeline layers
-    if (!focusedSceneId) {
-      return scenePackage.timeline.layers || [];
-    }
-
-    // Find the focused scene and return its internal layers
-    const findScene = (layers: TimelineLayer[]): TimelineScene | null => {
-      for (const layer of layers) {
-        for (const item of layer.items) {
-          if (item.type === 'scene' && item.id === focusedSceneId) {
-            return item as TimelineScene;
-          }
-          // Recursively search in nested scenes
-          if (item.type === 'scene') {
-            const found = findScene((item as TimelineScene).layers);
-            if (found) return found;
-          }
-        }
-      }
-      return null;
-    };
-
-    const focusedScene = findScene(scenePackage.timeline.layers || []);
-    return focusedScene?.layers || [];
-  }, [scenePackage, focusedSceneId]);
-
-  // Calculate duration from all items across all layers
+  // Calculate duration from all scenes, camera items, and effect items
   const duration = useMemo(() => {
     let maxDuration = 300000; // Default 5 minutes
-    timelineLayers.forEach(layer => {
-      layer.items.forEach(item => {
+
+    // Check scenes
+    timelineScenes.forEach(scene => {
+      const sceneEnd = scene.startTime + scene.duration;
+      if (sceneEnd > maxDuration) {
+        maxDuration = sceneEnd;
+      }
+    });
+
+    // Check camera track
+    if (scenePackage?.timeline.camera?.items) {
+      scenePackage.timeline.camera.items.forEach(item => {
         const itemEnd = item.startTime + item.duration;
         if (itemEnd > maxDuration) {
           maxDuration = itemEnd;
         }
       });
-    });
+    }
+
+    // Check effects track
+    if (scenePackage?.timeline.effects?.items) {
+      scenePackage.timeline.effects.items.forEach(item => {
+        const itemEnd = item.startTime + item.duration;
+        if (itemEnd > maxDuration) {
+          maxDuration = itemEnd;
+        }
+      });
+    }
+
     return Math.max(maxDuration, 300000); // Minimum 5 minutes, expands if content is longer
-  }, [timelineLayers]);
+  }, [timelineScenes, scenePackage]);
 
   const basePixelsPerMs = 0.1; // 100ms = 10px at 1x zoom
   const pixelsPerMs = basePixelsPerMs * zoom;
@@ -421,89 +425,93 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
 
     if (contextMenu.type === 'timeline-empty') {
       return [
-        { label: 'Add Layer', onClick: () => {
-          if (scenePath) handleAddLayer(scenePackage, scenePath, onUpdate);
-          setContextMenu(null);
-        }}
-      ];
-    } else if (contextMenu.type === 'timeline') {
-      return [
-        { label: 'Add Layer', onClick: () => {
-          if (scenePath) handleAddLayer(scenePackage, scenePath, onUpdate);
-          setContextMenu(null);
-        }},
         { label: 'Add Scene', onClick: async () => {
           if (!onUpdate || !scenePath) return;
           const updated = JSON.parse(JSON.stringify(scenePackage));
-          const layers = updated.timeline.layers || [];
+          const scenes = updated.timeline.scenes || [];
 
-          // Create new layer
-          const newLayer: TimelineLayer = {
-            id: `layer-${Date.now()}`,
-            name: `Layer ${layers.length + 1}`,
-            items: [],
-            collapsed: false
-          };
-          layers.push(newLayer);
-
-          // Create new scene and add it to the new layer
+          // Create new scene
           const newScene: TimelineScene = {
             id: `scene-${Date.now()}`,
-            type: 'scene',
-            name: `Scene ${layers.reduce((count: number, l: TimelineLayer) => count + l.items.filter((i: TimelineItem) => i.type === 'scene').length, 0) + 1}`,
+            name: `Scene ${scenes.length + 1}`,
             startTime: 0,
             duration: 10000,
             layers: [
               {
-                id: `scene-${Date.now()}-default-layer`,
-                name: 'Default Layer',
+                id: `scene-${Date.now()}-layer-1`,
+                name: 'Layer 1',
+                depth: 0,
                 items: [],
                 collapsed: false
               }
             ],
             collapsed: false
           };
-          newLayer.items.push(newScene);
+          scenes.push(newScene);
 
-          updated.timeline.layers = layers;
+          updated.timeline.scenes = scenes;
           onUpdate(updated);
           await window.electronAPI.saveScene(scenePath, updated);
           setContextMenu(null);
         }}
       ];
-    } else if (contextMenu.type === 'layer-header') {
+    } else if (contextMenu.type === 'timeline') {
       return [
-        { label: 'Add Image', onClick: () => {
-          setAssetPickerDialog({ type: 'images', layerId: contextMenu.targetId });
-          setContextMenu(null);
-        }},
-        { label: 'Add Audio', onClick: () => {
-          setAssetPickerDialog({ type: 'audio', layerId: contextMenu.targetId });
-          setContextMenu(null);
-        }},
         { label: 'Add Scene', onClick: async () => {
+          if (!onUpdate || !scenePath) return;
+          const updated = JSON.parse(JSON.stringify(scenePackage));
+          const scenes = updated.timeline.scenes || [];
+
+          // Create new scene
+          const newScene: TimelineScene = {
+            id: `scene-${Date.now()}`,
+            name: `Scene ${scenes.length + 1}`,
+            startTime: 0,
+            duration: 10000,
+            layers: [
+              {
+                id: `scene-${Date.now()}-layer-1`,
+                name: 'Layer 1',
+                depth: 0,
+                items: [],
+                collapsed: false
+              }
+            ],
+            collapsed: false
+          };
+          scenes.push(newScene);
+
+          updated.timeline.scenes = scenes;
+          onUpdate(updated);
+          await window.electronAPI.saveScene(scenePath, updated);
+          setContextMenu(null);
+        }}
+      ];
+    } else if (contextMenu.type === 'scene-header') {
+      return [
+        { label: 'Add Layer to Scene', onClick: async () => {
           if (scenePath) {
-            await handleAddScene(scenePackage, scenePath, contextMenu.targetId, onUpdate);
+            await handleAddLayerToScene(scenePackage, scenePath, contextMenu.targetId, onUpdate);
             setContextMenu(null);
           }
         }},
         { label: 'separator', onClick: () => {}, separator: true },
-        { label: 'Rename Layer', onClick: async () => {
+        { label: 'Rename Scene', onClick: async () => {
           if (scenePath) {
-            await handleRenameLayer(scenePackage, scenePath, contextMenu.targetId, onUpdate);
+            await handleRenameItem(scenePackage, scenePath, contextMenu.targetId, onUpdate);
             setContextMenu(null);
           }
         }},
-        { label: 'Duplicate Layer', onClick: async () => {
+        { label: 'Duplicate Scene', onClick: async () => {
           if (scenePath) {
-            await handleDuplicateLayer(scenePackage, scenePath, contextMenu.targetId, onUpdate);
+            await handleDuplicateItem(scenePackage, scenePath, contextMenu.targetId, onUpdate);
             setContextMenu(null);
           }
         }},
         { label: 'separator', onClick: () => {}, separator: true },
-        { label: 'Delete Layer', onClick: async () => {
+        { label: 'Delete Scene', onClick: async () => {
           if (scenePath) {
-            await handleDeleteLayer(scenePackage, scenePath, contextMenu.targetId, onUpdate);
+            await handleDeleteItem(scenePackage, scenePath, contextMenu.targetId, onUpdate);
             setContextMenu(null);
           }
         }}
@@ -703,7 +711,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
           setContextMenu({ type: 'timeline', targetId: '', x: e.clientX, y: e.clientY });
         }}
       >
-        {timelineLayers.length === 0 ? (
+        {timelineScenes.length === 0 ? (
           <div
             className="timeline-empty-state"
             onDragOver={(e) => e.preventDefault()}
@@ -716,42 +724,30 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
               setContextMenu({ type: 'timeline-empty', targetId: '', x: e.clientX, y: e.clientY });
             }}
           >
-            <div style={{ marginBottom: '15px' }}>No layers yet. Right-click to add layer.</div>
+            <div style={{ marginBottom: '15px' }}>No scenes yet. Right-click to add scene.</div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button onClick={() => {
-                if (scenePath) handleAddLayer(scenePackage, scenePath, onUpdate);
-              }} style={{ padding: '8px 16px', cursor: 'pointer' }}>
-                Add Layer
-              </button>
               <button onClick={async () => {
                 if (!onUpdate || !scenePath) return;
                 const updated = JSON.parse(JSON.stringify(scenePackage));
-                const layers = updated.timeline.layers || [];
-                const newLayer: TimelineLayer = {
-                  id: `layer-${Date.now()}`,
-                  name: `Layer ${layers.length + 1}`,
-                  items: [],
-                  collapsed: false
-                };
-                layers.push(newLayer);
+                const scenes = updated.timeline.scenes || [];
                 const newScene: TimelineScene = {
                   id: `scene-${Date.now()}`,
-                  type: 'scene',
-                  name: `Scene ${layers.reduce((count: number, l: TimelineLayer) => count + l.items.filter((i: TimelineItem) => i.type === 'scene').length, 0) + 1}`,
+                  name: `Scene ${scenes.length + 1}`,
                   startTime: 0,
                   duration: 10000,
                   layers: [
                     {
-                      id: `scene-${Date.now()}-default-layer`,
-                      name: 'Default Layer',
+                      id: `scene-${Date.now()}-layer-1`,
+                      name: 'Layer 1',
+                      depth: 0,
                       items: [],
                       collapsed: false
                     }
                   ],
                   collapsed: false
                 };
-                newLayer.items.push(newScene);
-                updated.timeline.layers = layers;
+                scenes.push(newScene);
+                updated.timeline.scenes = scenes;
                 onUpdate(updated);
                 await window.electronAPI.saveScene(scenePath, updated);
               }} style={{ padding: '8px 16px', cursor: 'pointer' }}>
@@ -762,139 +758,146 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
         ) : (
           <table className="timeline-tracks-table" style={{ minWidth: `${200 + duration * pixelsPerMs}px` }}>
             <tbody>
-          {timelineLayers.map((layer) => {
+          {/* Render each scene as a top-level track with expandable layers */}
+          {timelineScenes.map((scene) => {
             const rows: JSX.Element[] = [];
+            const isCollapsed = collapsedScenes.has(scene.id);
 
-            // Helper functions for layer row
-            const createGhostItem = () => {
-              if (!isDragging || !draggedItemId || draggedItemTargetLayer !== layer.id || draggedItemSourceLayer === layer.id) {
-                return null;
-              }
-              const findItem = (layers: any[]): any => {
-                for (const l of layers) {
-                  for (const i of l.items) {
-                    if (i.id === draggedItemId) return i;
-                    if (i.type === 'scene' && i.layers) {
-                      const found = findItem(i.layers);
-                      if (found) return found;
-                    }
-                  }
-                }
-                return null;
-              };
-              const ghostItem = findItem(scenePackage?.timeline.layers || []);
-              if (ghostItem) {
-                return (
-                  <div
-                    key={`ghost-${draggedItemId}`}
-                    className="timeline-item timeline-item-ghost"
-                    style={{
-                      left: `${ghostItem.startTime * pixelsPerMs}px`,
-                      width: `${ghostItem.duration * pixelsPerMs}px`,
-                      opacity: 0.5,
-                      pointerEvents: 'none'
-                    }}
-                  >
-                    <span className="item-label">{ghostItem.name}</span>
-                  </div>
-                );
-              }
-              return null;
-            };
-
-            const handleLayerItemDrop = (e: React.DragEvent, layerId?: string) => {
-              if (!scenePath) return;
-              const trackRect = e.currentTarget.getBoundingClientRect();
-              const dropX = e.clientX - trackRect.left;
-              let targetLayerId = layerId || layer.id;
-              for (const item of layer.items) {
-                if (item.type === 'scene') {
-                  const sceneStart = item.startTime * pixelsPerMs;
-                  const sceneEnd = (item.startTime + item.duration) * pixelsPerMs;
-                  if (dropX >= sceneStart && dropX <= sceneEnd) {
-                    const defaultLayer = item.layers?.[0];
-                    if (defaultLayer) {
-                      targetLayerId = defaultLayer.id;
-                    }
-                    break;
-                  }
-                }
-              }
-              handleItemDrop(e, scenePackage, scenePath, pixelsPerMs, targetLayerId, onUpdate);
-            };
-
-            // Main layer row
+            // Main scene row - HEADER ONLY (no content bar)
             rows.push(
-              <LayerRow
-                key={layer.id}
-                layer={layer}
-                duration={duration}
-                pixelsPerMs={pixelsPerMs}
-                isDragging={isDragging}
-                draggedItemId={draggedItemId}
-                draggedItemSourceLayer={draggedItemSourceLayer}
-                draggedItemTargetLayer={draggedItemTargetLayer}
-                dragOverLayerId={dragOverLayerId}
-                scenePackage={scenePackage}
-                scenePath={scenePath}
-                isMuted={mutedLayers.has(layer.id)}
-                isSoloed={soloedLayers.has(layer.id)}
-                isLocked={lockedLayers.has(layer.id)}
-                onToggleMute={handleToggleMute}
-                onToggleSolo={handleToggleSolo}
-                onToggleLock={handleToggleLock}
-                onSelectLayer={onSelectLayer}
-                onSelectItem={onSelectItem}
-                setContextMenu={setContextMenu}
-                onUpdate={onUpdate}
-                renderItem={renderItem}
-                handleLayerDragStart={(e, layerId) => handleLayerDragStart(e, layerId, setDraggedLayerId)}
-                handleLayerDragOver={(e, layerId) => handleLayerDragOver(e, layerId, draggedLayerId, setDragOverLayerId)}
-                handleLayerDragLeave={(e) => handleLayerDragLeave(e, setDragOverLayerId)}
-                handleLayerDrop={(e, layerId) => handleLayerDrop(e, layerId, draggedLayerId, scenePackage, scenePath, onUpdate, setDraggedLayerId, setDragOverLayerId)}
-                handleLayerDragEnd={() => handleLayerDragEnd(setDraggedLayerId, setDragOverLayerId)}
-                handleItemDrop={handleLayerItemDrop}
-                handleTrackMouseEnter={(layerId) => handleTrackMouseEnter(layerId, isDragging, draggedItemId, setDraggedItemTargetLayer)}
-                renderGhostItem={createGhostItem}
-              />
+              <tr key={scene.id} className="timeline-track scene-track">
+                <th
+                  className="track-header scene-header"
+                  onClick={() => {
+                    onSelectScene?.(scene.id);
+                    onSelectItem?.(null);
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setContextMenu({ type: 'scene-header', targetId: scene.id, x: e.clientX, y: e.clientY });
+                  }}
+                >
+                  <div className="scene-header-content">
+                    <span className="scene-icon">🎬</span>
+                    <span className="track-name scene-track-name">{scene.name}</span>
+                    <button
+                      className="scene-collapse-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSceneCollapse(scene.id);
+                      }}
+                    >
+                      {isCollapsed ? '▶' : '▼'}
+                    </button>
+                  </div>
+                </th>
+                <td className="track-content scene-track-content">
+                  {/* Scene row has NO content - just a header/folder */}
+                </td>
+              </tr>
             );
 
-            // Add scene layer rows for each scene item in this layer
-            layer.items
-              .filter(item => item.type === 'scene')
-              .forEach((sceneItem: TimelineScene) => {
-                const isCollapsed = collapsedScenes.has(sceneItem.id);
-                if (!isCollapsed) {
-                  (sceneItem.layers || []).forEach((sceneLayer, layerIndex) => {
-                    rows.push(
-                      <SceneLayerRow
-                        key={`scene-layer-${sceneLayer.id}`}
-                        sceneLayer={sceneLayer}
-                        sceneItem={sceneItem}
-                        isFirstLayer={layerIndex === 0}
-                        duration={duration}
-                        pixelsPerMs={pixelsPerMs}
-                        isDragging={isDragging}
-                        draggedItemId={draggedItemId}
-                        draggedItemSourceLayer={draggedItemSourceLayer}
-                        draggedItemTargetLayer={draggedItemTargetLayer}
-                        scenePath={scenePath}
-                        onSelectLayer={onSelectLayer}
-                        onSelectItem={onSelectItem}
-                        setContextMenu={setContextMenu}
-                        handleItemDrop={(e, layerId) => {
-                          if (scenePath) handleItemDrop(e, scenePackage, scenePath, pixelsPerMs, layerId, onUpdate);
-                        }}
-                        handleTrackMouseEnter={(layerId) => handleTrackMouseEnter(layerId, isDragging, draggedItemId, setDraggedItemTargetLayer)}
-                        renderItem={renderItem}
-                      />
-                    );
-                  });
-                }
+            // Add scene layer rows when expanded
+            if (!isCollapsed) {
+              scene.layers.forEach((sceneLayer) => {
+                rows.push(
+                  <SceneLayerRow
+                    key={`scene-layer-${sceneLayer.id}`}
+                    sceneLayer={sceneLayer}
+                    sceneItem={scene}
+                    duration={duration}
+                    pixelsPerMs={pixelsPerMs}
+                    isDragging={isDragging}
+                    draggedItemId={draggedItemId}
+                    draggedItemSourceLayer={draggedItemSourceLayer}
+                    draggedItemTargetLayer={draggedItemTargetLayer}
+                    scenePath={scenePath}
+                    onSelectLayer={onSelectLayer}
+                    onSelectItem={onSelectItem}
+                    setContextMenu={setContextMenu}
+                    handleItemDrop={(e, layerId) => {
+                      if (scenePath) handleItemDrop(e, scenePackage, scenePath, pixelsPerMs, layerId, onUpdate);
+                    }}
+                    handleTrackMouseEnter={(layerId) => handleTrackMouseEnter(layerId, isDragging, draggedItemId, setDraggedItemTargetLayer)}
+                    renderItem={renderItem}
+                  />
+                );
               });
+            }
 
-            return <React.Fragment key={layer.id}>{rows}</React.Fragment>;
+            return <React.Fragment key={scene.id}>{rows}</React.Fragment>;
           })}
+
+          {/* Camera Track */}
+          <CameraTrack
+            camera={scenePackage.timeline.camera || { items: [], defaultTransform: { x: 0, y: 0, zoom: 1.0, rotation: 0 } }}
+            currentTime={currentTime}
+            pixelsPerMs={pixelsPerMs}
+            duration={duration}
+            collapsed={cameraTrackCollapsed}
+            onToggleCollapse={() => setCameraTrackCollapsed(!cameraTrackCollapsed)}
+            onUpdate={(camera: CameraTrackType) => {
+              if (onUpdate) {
+                const updated = JSON.parse(JSON.stringify(scenePackage));
+                updated.timeline.camera = camera;
+                onUpdate(updated);
+                if (scenePath) {
+                  window.electronAPI.saveScene(scenePath, updated);
+                }
+              }
+            }}
+            setContextMenu={setContextMenu}
+            isDragging={isDragging}
+            isResizing={isResizing}
+            draggedItemId={draggedItemId}
+            resizingItemId={resizingItemId}
+            setIsDragging={setIsDragging}
+            setDraggedItemId={setDraggedItemId}
+            setIsResizing={setIsResizing}
+            setResizingItemId={setResizingItemId}
+            setResizeHandle={setResizeHandle}
+            setDragStartX={setDragStartX}
+            setDragStartTime={setDragStartTime}
+            setResizeStartX={setResizeStartX}
+            setResizeStartTime={setResizeStartTime}
+            setResizeStartDuration={setResizeStartDuration}
+          />
+
+          {/* Effects Track */}
+          <EffectsTrack
+            effects={scenePackage.timeline.effects || { items: [] }}
+            currentTime={currentTime}
+            pixelsPerMs={pixelsPerMs}
+            duration={duration}
+            collapsed={effectsTrackCollapsed}
+            onToggleCollapse={() => setEffectsTrackCollapsed(!effectsTrackCollapsed)}
+            onUpdate={(effects) => {
+              if (onUpdate) {
+                const updated = JSON.parse(JSON.stringify(scenePackage));
+                updated.timeline.effects = effects;
+                onUpdate(updated);
+                if (scenePath) {
+                  window.electronAPI.saveScene(scenePath, updated);
+                }
+              }
+            }}
+            setContextMenu={setContextMenu}
+            isDragging={isDragging}
+            isResizing={isResizing}
+            draggedItemId={draggedItemId}
+            resizingItemId={resizingItemId}
+            setIsDragging={setIsDragging}
+            setDraggedItemId={setDraggedItemId}
+            setIsResizing={setIsResizing}
+            setResizingItemId={setResizingItemId}
+            setResizeHandle={setResizeHandle}
+            setDragStartX={setDragStartX}
+            setDragStartTime={setDragStartTime}
+            setResizeStartX={setResizeStartX}
+            setResizeStartTime={setResizeStartTime}
+            setResizeStartDuration={setResizeStartDuration}
+          />
             </tbody>
           </table>
         )}

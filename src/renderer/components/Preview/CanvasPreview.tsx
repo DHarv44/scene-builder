@@ -72,35 +72,29 @@ const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  // Find the scene item in timeline layers by ID
-  const findSceneItem = (layers: any[], sceneId: string): any | null => {
-    for (const layer of layers) {
-      for (const item of layer.items) {
-        if (item.type === 'scene' && item.id === sceneId) {
-          return item;
-        }
+  // Find the scene item in timeline by ID
+  const findSceneItem = (scenes: any[], sceneId: string): any | null => {
+    for (const scene of scenes) {
+      if (scene.id === sceneId) {
+        return scene;
       }
     }
     return null;
   };
 
   // Find the scene that should be active at currentTime
-  const findSceneAtTime = (layers: any[], time: number): any | null => {
-    for (const layer of layers) {
-      for (const item of layer.items) {
-        if (item.type === 'scene') {
-          const sceneEnd = item.startTime + item.duration;
-          if (time >= item.startTime && time < sceneEnd) {
-            return item;
-          }
-        }
+  const findSceneAtTime = (scenes: any[], time: number): any | null => {
+    for (const scene of scenes) {
+      const sceneEnd = scene.startTime + scene.duration;
+      if (time >= scene.startTime && time < sceneEnd) {
+        return scene;
       }
     }
     return null;
   };
 
   // Timeline drives canvas: show scene based on playhead time
-  const currentScene = findSceneAtTime(scenePackage?.timeline.layers || [], currentTime);
+  const currentScene = findSceneAtTime(scenePackage?.timeline.scenes || [], currentTime);
 
   // Get layers from the scene's internal layers (flatten them)
   // Filter by currentTime to only show items that are active

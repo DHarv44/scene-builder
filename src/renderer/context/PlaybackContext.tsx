@@ -39,11 +39,9 @@ export const PlaybackProvider: React.FC<PlaybackProviderProps> = ({
     if (!scenePackage) return 10000;
 
     let maxDuration = 0;
-    for (const layer of scenePackage.timeline.layers || []) {
-      for (const item of layer.items) {
-        const itemEnd = item.startTime + item.duration;
-        if (itemEnd > maxDuration) maxDuration = itemEnd;
-      }
+    for (const scene of scenePackage.timeline.scenes || []) {
+      const sceneEnd = scene.startTime + scene.duration;
+      if (sceneEnd > maxDuration) maxDuration = sceneEnd;
     }
     return maxDuration || 10000;
   }, [scenePackage]);
