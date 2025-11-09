@@ -15,7 +15,7 @@ export interface TimelineProps {
 export type ResizeHandle = 'left' | 'right' | null;
 
 export interface ContextMenuState {
-  type: 'layer' | 'scene' | 'item' | 'timeline' | 'layer-header';
+  type: 'layer' | 'scene' | 'item' | 'timeline' | 'layer-header' | 'timeline-empty';
   targetId: string;
   x: number;
   y: number;

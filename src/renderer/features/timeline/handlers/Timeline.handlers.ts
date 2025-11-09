@@ -4,10 +4,10 @@ import type {
   TimelineItem,
   TimelineImage
 } from '../../../types/scenePackage';
-import type { ResizeHandle } from './Timeline.types';
-import { findParentScene, findParentSceneForItem } from './Timeline.utils';
-import { updateItem } from './Timeline.actions';
-import { sceneSaveService } from '../../services/sceneSaveService';
+import type { ResizeHandle } from '../types';
+import { findParentScene, findParentSceneForItem } from '../utils/Timeline.utils';
+import { updateItem } from '../actions/Timeline.actions';
+import { sceneSaveService } from '../../../services/sceneSaveService';
 
 export const handleTimelineClick = (
   e: React.MouseEvent<HTMLDivElement>,

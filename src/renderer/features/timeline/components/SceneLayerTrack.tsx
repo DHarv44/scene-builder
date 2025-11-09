@@ -1,8 +1,8 @@
 import React from 'react';
 import type { TimelineLayer, TimelineItem, TimelineScene } from '../../../types/scenePackage';
-import type { ContextMenuState } from './Timeline.types';
-import type { ContextMenuItem } from '../Preview/ContextMenu';
-import { handleItemDrop, handleTrackMouseEnter } from './Timeline.handlers';
+import type { ContextMenuState } from '../types';
+import type { ContextMenuItem } from '../../../components/Preview/ContextMenu';
+import { handleItemDrop, handleTrackMouseEnter } from '../handlers/Timeline.handlers';
 import ImageClip from './ImageClip';
 import AudioClip from './AudioClip';
 import EffectClip from './EffectClip';

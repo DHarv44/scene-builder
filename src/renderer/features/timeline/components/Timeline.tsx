@@ -4,12 +4,12 @@ import type {
   TimelineItem,
   TimelineScene
 } from '../../../types/scenePackage';
-import ContextMenu, { ContextMenuItem } from '../Preview/ContextMenu';
+import ContextMenu, { ContextMenuItem } from '../../../components/Preview/ContextMenu';
 import './Timeline.css';
 
 // Import extracted modules
-import type { TimelineProps, ResizeHandle, ContextMenuState } from './Timeline.types';
-import { formatTime, generateRulerMarkers, findContextMenuTarget } from './Timeline.utils';
+import type { TimelineProps, ResizeHandle, ContextMenuState } from '../types';
+import { formatTime, generateRulerMarkers } from '../utils/Timeline.utils';
 import { getSceneClipContextMenu } from './SceneClip';
 import { getSceneLayerTrackContextMenu } from './SceneLayerTrack';
 import {
@@ -26,7 +26,7 @@ import {
   handleAddImage,
   handleAddAudio,
   handleAddScene
-} from './Timeline.actions';
+} from '../actions/Timeline.actions';
 import {
   handleTimelineClick,
   handleClipMouseDown,
@@ -39,15 +39,17 @@ import {
   handleLayerDrop,
   handleLayerDragEnd,
   handleTrackMouseEnter
-} from './Timeline.handlers';
-import { sceneSaveService } from '../../services/sceneSaveService';
+} from '../handlers/Timeline.handlers';
+import { sceneSaveService } from '../../../services/sceneSaveService';
 import SceneClip from './SceneClip';
 import ImageClip, { getImageClipContextMenu } from './ImageClip';
 import AudioClip from './AudioClip';
 import EffectClip from './EffectClip';
 import TimelineBreadcrumb from './TimelineBreadcrumb';
-import { useTimelineNavigation } from '../../context/TimelineNavigationContext';
-import AssetPickerDialog from '../Dialogs/AssetPickerDialog';
+import { useTimelineNavigation } from '../../../context/TimelineNavigationContext';
+import AssetPickerDialog from '../../../components/Dialogs/AssetPickerDialog';
+import LayerRow from './LayerRow';
+import SceneLayerRow from './SceneLayerRow';
 
 export interface TimelineHandle {
   scrollToEnd: () => void;
@@ -59,7 +61,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
   currentTime,
   onTimeChange,
   onSelectItem,
-  selectedSceneId,
+  selectedSceneId: _selectedSceneId,
   onSelectScene,
   onSelectLayer,
   onUpdate
@@ -662,290 +664,131 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
           <table className="timeline-tracks-table" style={{ minWidth: `${150 + duration * pixelsPerMs}px` }}>
             <tbody>
           {timelineLayers.map((layer) => {
-            // Calculate rowspan for this layer - counts scenes and their expanded layers
-            let rowSpan = 1; // Base row for the layer itself
-            layer.items.forEach(item => {
-              if (item.type === 'scene') {
-                const sceneItem = item as TimelineScene;
-                if (!collapsedScenes.has(sceneItem.id)) {
-                  // Add 1 for scene header + number of scene layers
-                  rowSpan += 1 + (sceneItem.layers?.length || 0);
-                } else {
-                  // Just the scene header when collapsed
-                  rowSpan += 1;
+            const rows: JSX.Element[] = [];
+
+            // Helper functions for layer row
+            const createGhostItem = () => {
+              if (!isDragging || !draggedItemId || draggedItemTargetLayer !== layer.id || draggedItemSourceLayer === layer.id) {
+                return null;
+              }
+              const findItem = (layers: any[]): any => {
+                for (const l of layers) {
+                  for (const i of l.items) {
+                    if (i.id === draggedItemId) return i;
+                    if (i.type === 'scene' && i.layers) {
+                      const found = findItem(i.layers);
+                      if (found) return found;
+                    }
+                  }
+                }
+                return null;
+              };
+              const ghostItem = findItem(scenePackage?.timeline.layers || []);
+              if (ghostItem) {
+                return (
+                  <div
+                    key={`ghost-${draggedItemId}`}
+                    className="timeline-item timeline-item-ghost"
+                    style={{
+                      left: `${ghostItem.startTime * pixelsPerMs}px`,
+                      width: `${ghostItem.duration * pixelsPerMs}px`,
+                      opacity: 0.5,
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <span className="item-label">{ghostItem.name}</span>
+                  </div>
+                );
+              }
+              return null;
+            };
+
+            const handleLayerItemDrop = (e: React.DragEvent, layerId?: string) => {
+              if (!scenePath) return;
+              const trackRect = e.currentTarget.getBoundingClientRect();
+              const dropX = e.clientX - trackRect.left;
+              let targetLayerId = layerId || layer.id;
+              for (const item of layer.items) {
+                if (item.type === 'scene') {
+                  const sceneStart = item.startTime * pixelsPerMs;
+                  const sceneEnd = (item.startTime + item.duration) * pixelsPerMs;
+                  if (dropX >= sceneStart && dropX <= sceneEnd) {
+                    const defaultLayer = item.layers?.[0];
+                    if (defaultLayer) {
+                      targetLayerId = defaultLayer.id;
+                    }
+                    break;
+                  }
                 }
               }
-            });
+              handleItemDrop(e, scenePackage, scenePath, pixelsPerMs, targetLayerId, onUpdate);
+            };
 
-            return (
-              <React.Fragment key={layer.id}>
-                {/* Main timeline layer */}
-                <tr className="timeline-track">
-                <th
-                  className={`track-header ${dragOverLayerId === layer.id ? 'drag-over' : ''}`}
-                  rowSpan={rowSpan}
-                  draggable
-                  onDragStart={(e) => handleLayerDragStart(e, layer.id, setDraggedLayerId)}
-                  onDragOver={(e) => handleLayerDragOver(e, layer.id, draggedLayerId, setDragOverLayerId)}
-                  onDragLeave={(e) => handleLayerDragLeave(e, setDragOverLayerId)}
-                  onDrop={(e) => handleLayerDrop(e, layer.id, draggedLayerId, scenePackage, scenePath, onUpdate, setDraggedLayerId, setDragOverLayerId)}
-                  onDragEnd={() => handleLayerDragEnd(setDraggedLayerId, setDragOverLayerId)}
-                  onClick={() => {
-                    onSelectLayer?.(layer.id);
-                    onSelectItem?.(null);
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setContextMenu({ type: 'layer-header', targetId: layer.id, x: e.clientX, y: e.clientY });
-                  }}
-                >
-                  <span className="track-name">{layer.name}</span>
-                </th>
-                <td
-                  className="track-content"
-                  data-context-type="timeline-layer"
-                  data-context-id={layer.id}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // DEBUG: Log click information
-                    const clickTarget = e.target as HTMLElement;
-                    console.log('=== CONTEXT MENU DEBUG ===');
-                    console.log('Click coordinates:', { x: e.clientX, y: e.clientY });
-                    console.log('Click target element:', clickTarget);
-                    console.log('Click target className:', clickTarget.className);
-                    console.log('Click target tagName:', clickTarget.tagName);
-
-                    // Log DOM hierarchy from click point upward
-                    console.log('DOM hierarchy (bottom to top):');
-                    let el: HTMLElement | null = clickTarget;
-                    let depth = 0;
-                    while (el && depth < 10) {
-                      const contextType = el.getAttribute('data-context-type');
-                      const contextId = el.getAttribute('data-context-id');
-                      console.log(`  ${depth}: ${el.className || el.tagName}`, {
-                        contextType,
-                        contextId,
-                        element: el
-                      });
-                      el = el.parentElement;
-                      depth++;
-                    }
-
-                    const target = findContextMenuTarget(e);
-                    console.log('findContextMenuTarget result:', target);
-
-                    if (target) {
-                      // Map data-context-type to menu type expected by getContextMenuItems
-                      const menuType = target.type === 'timeline-layer' ? 'layer' :
-                                      target.type === 'scene-layer' ? 'layer' :
-                                      target.type as 'scene' | 'item';
-                      console.log('Menu type determined:', menuType);
-                      console.log('Target ID:', target.id);
-                      console.log('=========================');
-                      setContextMenu({ type: menuType, targetId: target.id, x: e.clientX, y: e.clientY });
-                    } else {
-                      console.log('No context menu target found!');
-                      console.log('=========================');
-                    }
-                  }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    if (!scenePath) return;
-
-                    // Calculate drop position to determine target layer
-                    const trackRect = e.currentTarget.getBoundingClientRect();
-                    const dropX = e.clientX - trackRect.left;
-                    const dropTime = dropX / pixelsPerMs;
-
-                    // Check if dropping within a scene on this layer
-                    let targetLayerId = layer.id;
-                    for (const item of layer.items) {
-                      if (item.type === 'scene') {
-                        const sceneStart = item.startTime * pixelsPerMs;
-                        const sceneEnd = (item.startTime + item.duration) * pixelsPerMs;
-                        if (dropX >= sceneStart && dropX <= sceneEnd) {
-                          // Dropping within scene bounds - use default layer
-                          const defaultLayer = item.layers?.[0];
-                          if (defaultLayer) {
-                            targetLayerId = defaultLayer.id;
-                          }
-                          break;
-                        }
-                      }
-                    }
-
-                    handleItemDrop(e, scenePackage, scenePath, pixelsPerMs, targetLayerId, onUpdate);
-                  }}
-                  onMouseEnter={() => handleTrackMouseEnter(layer.id, isDragging, draggedItemId, setDraggedItemTargetLayer)}
-                  style={{ minWidth: `${duration * pixelsPerMs}px` }}
-                >
-                  {/* Render all items on this layer */}
-                  {/* Render non-scene items only */}
-                  {layer.items
-                    .filter(item => item.type !== 'scene')
-                    .map(item => {
-                      // Hide item if it's being dragged to a DIFFERENT layer
-                      if (isDragging && draggedItemId === item.id && draggedItemSourceLayer === layer.id && draggedItemTargetLayer !== layer.id) {
-                        return null;
-                      }
-                      return renderItem(item, layer.id);
-                    })}
-
-                  {/* Render ghost item if this is the target layer during drag */}
-                  {isDragging && draggedItemId && draggedItemTargetLayer === layer.id && draggedItemSourceLayer !== layer.id && (() => {
-                    // Find the dragged item to render as ghost
-                    const findItem = (layers: any[]): any => {
-                      for (const l of layers) {
-                        for (const i of l.items) {
-                          if (i.id === draggedItemId) return i;
-                          if (i.type === 'scene' && i.layers) {
-                            const found = findItem(i.layers);
-                            if (found) return found;
-                          }
-                        }
-                      }
-                      return null;
-                    };
-                    const ghostItem = findItem(scenePackage?.timeline.layers || []);
-                    if (ghostItem) {
-                      return (
-                        <div
-                          key={`ghost-${draggedItemId}`}
-                          className="timeline-item timeline-item-ghost"
-                          style={{
-                            left: `${ghostItem.startTime * pixelsPerMs}px`,
-                            width: `${ghostItem.duration * pixelsPerMs}px`,
-                            opacity: 0.5,
-                            pointerEvents: 'none'
-                          }}
-                        >
-                          <span className="item-label">{ghostItem.name}</span>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </td>
-              </tr>
-
-              {/* Render scene rows for this layer */}
-              {layer.items
-                .filter(item => item.type === 'scene')
-                .map((sceneItem: TimelineScene) => {
-                  const isCollapsed = collapsedScenes.has(sceneItem.id);
-
-                  return (
-                    <React.Fragment key={`scene-${sceneItem.id}`}>
-                      {/* Scene header row */}
-                      <tr className="timeline-track scene-header-row">
-                        <td
-                          className="track-content"
-                          style={{
-                            minWidth: `${duration * pixelsPerMs}px`,
-                            background: 'linear-gradient(to right, rgba(14, 99, 156, 0.2), rgba(14, 99, 156, 0.1))',
-                            borderLeft: '3px solid #0e639c',
-                            position: 'relative'
-                          }}
-                        >
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: `${sceneItem.startTime * pixelsPerMs}px`,
-                              width: `${sceneItem.duration * pixelsPerMs}px`,
-                              height: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              padding: '0 6px',
-                              background: 'linear-gradient(to bottom, rgba(14, 99, 156, 0.4), rgba(14, 99, 156, 0.25))',
-                              border: '1px solid #0e639c',
-                              borderTop: '2px solid #1a7fbf',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            <button
-                              className="scene-collapse-toggle"
-                              onClick={() => toggleSceneCollapse(sceneItem.id)}
-                              title={isCollapsed ? 'Expand scene layers' : 'Collapse scene layers'}
-                              style={{
-                                width: '20px',
-                                height: '20px',
-                                padding: 0,
-                                background: 'rgba(0, 0, 0, 0.3)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                                borderRadius: '2px',
-                                color: '#fff',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                marginRight: '6px',
-                                flexShrink: 0
-                              }}
-                            >
-                              {isCollapsed ? '▶' : '▼'}
-                            </button>
-                            <span style={{ fontSize: '13px', color: '#fff', fontWeight: 500 }}>{sceneItem.name}</span>
-                          </div>
-                        </td>
-                      </tr>
-
-                      {/* Scene layer rows */}
-                      {!isCollapsed && (sceneItem.layers || []).map((sceneLayer) => (
-                        <tr key={`scene-layer-${sceneLayer.id}`} className="timeline-track scene-layer-row">
-                          <td
-                            className="track-content"
-                            style={{
-                              minWidth: `${duration * pixelsPerMs}px`,
-                              background: 'rgba(14, 99, 156, 0.05)',
-                              borderLeft: '3px solid #0e639c',
-                              position: 'relative'
-                            }}
-                          >
-                            <div
-                              style={{
-                                position: 'absolute',
-                                left: `${sceneItem.startTime * pixelsPerMs}px`,
-                                width: `${sceneItem.duration * pixelsPerMs}px`,
-                                height: '100%',
-                                background: 'rgba(0, 0, 0, 0.1)',
-                                border: '1px solid rgba(14, 99, 156, 0.3)',
-                                borderTop: 'none'
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: '80px',
-                                  height: '100%',
-                                  fontSize: '10px',
-                                  padding: '4px',
-                                  background: 'rgba(0, 0, 0, 0.2)',
-                                  borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-                                  color: '#ccc',
-                                  float: 'left'
-                                }}
-                              >
-                                {sceneLayer.name}
-                              </div>
-                              <div
-                                style={{
-                                  marginLeft: '80px',
-                                  height: '100%',
-                                  position: 'relative'
-                                }}
-                              >
-                                {/* Render scene layer items */}
-                                {sceneLayer.items?.map(item => renderItem(item, sceneLayer.id))}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  );
-                })}
-            </React.Fragment>
+            // Main layer row
+            rows.push(
+              <LayerRow
+                key={layer.id}
+                layer={layer}
+                duration={duration}
+                pixelsPerMs={pixelsPerMs}
+                isDragging={isDragging}
+                draggedItemId={draggedItemId}
+                draggedItemSourceLayer={draggedItemSourceLayer}
+                draggedItemTargetLayer={draggedItemTargetLayer}
+                dragOverLayerId={dragOverLayerId}
+                scenePackage={scenePackage}
+                scenePath={scenePath}
+                onSelectLayer={onSelectLayer}
+                onSelectItem={onSelectItem}
+                setContextMenu={setContextMenu}
+                onUpdate={onUpdate}
+                renderItem={renderItem}
+                handleLayerDragStart={(e, layerId) => handleLayerDragStart(e, layerId, setDraggedLayerId)}
+                handleLayerDragOver={(e, layerId) => handleLayerDragOver(e, layerId, draggedLayerId, setDragOverLayerId)}
+                handleLayerDragLeave={(e) => handleLayerDragLeave(e, setDragOverLayerId)}
+                handleLayerDrop={(e, layerId) => handleLayerDrop(e, layerId, draggedLayerId, scenePackage, scenePath, onUpdate, setDraggedLayerId, setDragOverLayerId)}
+                handleLayerDragEnd={() => handleLayerDragEnd(setDraggedLayerId, setDragOverLayerId)}
+                handleItemDrop={handleLayerItemDrop}
+                handleTrackMouseEnter={(layerId) => handleTrackMouseEnter(layerId, isDragging, draggedItemId, setDraggedItemTargetLayer)}
+                renderGhostItem={createGhostItem}
+              />
             );
+
+            // Add scene layer rows for each scene item in this layer
+            layer.items
+              .filter(item => item.type === 'scene')
+              .forEach((sceneItem: TimelineScene) => {
+                const isCollapsed = collapsedScenes.has(sceneItem.id);
+                if (!isCollapsed) {
+                  (sceneItem.layers || []).forEach((sceneLayer, layerIndex) => {
+                    rows.push(
+                      <SceneLayerRow
+                        key={`scene-layer-${sceneLayer.id}`}
+                        sceneLayer={sceneLayer}
+                        sceneItem={sceneItem}
+                        isFirstLayer={layerIndex === 0}
+                        duration={duration}
+                        pixelsPerMs={pixelsPerMs}
+                        isDragging={isDragging}
+                        draggedItemId={draggedItemId}
+                        draggedItemSourceLayer={draggedItemSourceLayer}
+                        draggedItemTargetLayer={draggedItemTargetLayer}
+                        scenePath={scenePath}
+                        onSelectLayer={onSelectLayer}
+                        onSelectItem={onSelectItem}
+                        setContextMenu={setContextMenu}
+                        handleItemDrop={(e, layerId) => {
+                          if (scenePath) handleItemDrop(e, scenePackage, scenePath, pixelsPerMs, layerId, onUpdate);
+                        }}
+                        handleTrackMouseEnter={(layerId) => handleTrackMouseEnter(layerId, isDragging, draggedItemId, setDraggedItemTargetLayer)}
+                        renderItem={renderItem}
+                      />
+                    );
+                  });
+                }
+              });
+
+            return <React.Fragment key={layer.id}>{rows}</React.Fragment>;
           })}
             </tbody>
           </table>

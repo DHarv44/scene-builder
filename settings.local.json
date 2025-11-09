@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(done)",
+      "Bash(for:*)",
+      "Bash(do echo \"Converting: $file\")",
+      "Bash(sed:*)",
+      "Bash(rm:*)",
+      "Bash(npx vite build:*)",
+      "Bash(unset ELECTRON_RUN_AS_NODE)",
+      "Bash(npm run dev:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

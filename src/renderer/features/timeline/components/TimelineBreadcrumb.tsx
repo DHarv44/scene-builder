@@ -1,6 +1,6 @@
 import React from 'react';
-import { useTimelineNavigation } from '../../context/TimelineNavigationContext';
-import './TimelineBreadcrumb.css';
+import { useTimelineNavigation } from '../../../context/TimelineNavigationContext';
+import './Timeline.css';
 
 const TimelineBreadcrumb: React.FC = () => {
   const { breadcrumbs, navigateToBreadcrumb } = useTimelineNavigation();

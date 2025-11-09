@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import CanvasPreview from '../../features/canvas/CanvasPreview';
-import Timeline, { TimelineHandle } from '../Timeline/Timeline';
+import { Timeline, type TimelineHandle } from '@features/timeline';
 import PlaybackControls from '../Preview/PlaybackControls';
 import { useLayout } from '../../context/LayoutContext';
 import { useSelection } from '../../context/SelectionContext';
